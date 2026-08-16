@@ -14,6 +14,7 @@
     },
     "test": {
       "executor": "nx:run-commands",
+      "dependsOn": ["build", "^build"],
       "options": {
         "command": "swift test",
         "cwd": "libs/platform/mac/filesystem"
