@@ -1,0 +1,47 @@
+{
+  "name": "agentic-monorepo",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "lint": "oxlint tools && node tools/check-boundaries.mjs",
+    "format": "oxfmt",
+    "format:check": "oxfmt --check"
+  },
+  "devDependencies": {
+    "@types/node": "26.2.0",
+    "nx": "23.1.1",
+    "oxfmt": "0.63.0",
+    "oxlint": "1.78.0",
+    "oxlint-tsgolint": "7.0.2001",
+    "tsdown": "0.22.14",
+    "typescript": "7.0.2",
+    "vite": "8.2.1",
+    "vitest": "4.1.10"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "packageManager": "pnpm@11.21.0",
+  "nx": {
+    "name": "workspace",
+    "includedScripts": [
+      "lint",
+      "format"
+    ],
+    "targets": {
+      "lint": {
+        "dependsOn": [],
+        "inputs": [
+          "{workspaceRoot}/tools/**/*",
+          "{workspaceRoot}/.oxlintrc.json",
+          "{workspaceRoot}/**/project.json",
+          "{workspaceRoot}/**/package.json",
+          "{workspaceRoot}/nx.json"
+        ]
+      },
+      "format": {
+        "cache": false
+      }
+    }
+  }
+}

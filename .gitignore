@@ -1,0 +1,7 @@
+node_modules/
+dist/
+.nx/
+target/
+.build/
+.swiftpm/
+.DS_Store

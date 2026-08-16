@@ -1,0 +1,25 @@
+{
+  "name": "@domains/search",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "default": "./dist/index.mjs"
+    }
+  },
+  "scripts": {
+    "build": "tsdown",
+    "typecheck": "tsc",
+    "test": "vitest run",
+    "lint": "oxlint --config ../../../.oxlintrc.json ."
+  },
+  "nx": {
+    "tags": [
+      "type:domain",
+      "domain:search",
+      "lang:ts"
+    ]
+  }
+}

@@ -1,0 +1,42 @@
+disabled_rules:
+  - trailing_comma
+  - line_length
+
+opt_in_rules:
+  - closure_spacing
+  - contains_over_filter_count
+  - contains_over_filter_is_empty
+  - contains_over_first_not_nil
+  - contains_over_range_nil_comparison
+  - empty_collection_literal
+  - empty_count
+  - empty_string
+  - fatal_error_message
+  - first_where
+  - force_unwrapping
+  - identical_operands
+  - implicitly_unwrapped_optional
+  - joined_default_parameter
+  - last_where
+  - legacy_multiple
+  - modifier_order
+  - multiline_arguments
+  - multiline_parameters
+  - operator_usage_whitespace
+  - overridden_super_call
+  - prefer_self_type_over_type_of_self
+  - prohibited_super_call
+  - redundant_nil_coalescing
+  - redundant_type_annotation
+  - reduce_into
+  - sorted_imports
+  - static_operator
+  - toggle_bool
+  - unavailable_function
+  - unneeded_parentheses_in_closure_argument
+  - unowned_variable_capture
+  - untyped_error_in_catch
+  - vertical_whitespace_closing_braces
+  - vertical_whitespace_opening_braces
+  - weak_delegate
+  - yoda_condition

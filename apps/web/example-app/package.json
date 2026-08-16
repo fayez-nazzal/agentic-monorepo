@@ -1,0 +1,24 @@
+{
+  "name": "web-example-app",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "typecheck": "tsc",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "lint": "oxlint --config ../../../.oxlintrc.json ."
+  },
+  "dependencies": {
+    "@domains/search": "workspace:*"
+  },
+  "nx": {
+    "tags": [
+      "type:app",
+      "platform:web",
+      "lang:ts"
+    ]
+  }
+}

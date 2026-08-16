@@ -1,0 +1,6 @@
+packages:
+  - "apps/**"
+  - "libs/**"
+allowBuilds:
+  nx: true
+minimumReleaseAge: 2880

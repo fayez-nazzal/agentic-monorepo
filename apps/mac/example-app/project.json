@@ -1,0 +1,49 @@
+{
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "name": "mac-example-app",
+  "projectType": "application",
+  "tags": ["type:app", "platform:mac", "lang:swift"],
+  "implicitDependencies": ["mac-filesystem"],
+  "targets": {
+    "build": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "command": "swift build",
+        "cwd": "apps/mac/example-app"
+      }
+    },
+    "run": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "swift run",
+        "cwd": "apps/mac/example-app"
+      }
+    },
+    "lint": {
+      "executor": "nx:run-commands",
+      "dependsOn": [],
+      "inputs": ["default", "{workspaceRoot}/.swift-format", "{workspaceRoot}/.swiftlint.yml"],
+      "options": {
+        "commands": [
+          "swift format lint --strict --parallel --recursive Sources Package.swift",
+          "../../../tools/swiftlint.sh lint --strict --quiet --config ../../../.swiftlint.yml Sources Package.swift"
+        ],
+        "parallel": false,
+        "cwd": "apps/mac/example-app"
+      }
+    },
+    "format": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "commands": [
+          "swift format --in-place --parallel --recursive Sources Package.swift",
+          "../../../tools/swiftlint.sh --fix --quiet --config ../../../.swiftlint.yml Sources Package.swift"
+        ],
+        "parallel": false,
+        "cwd": "apps/mac/example-app"
+      }
+    }
+  }
+}

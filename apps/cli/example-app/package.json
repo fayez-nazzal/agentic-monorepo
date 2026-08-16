@@ -1,0 +1,23 @@
+{
+  "name": "cli-example-app",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsdown",
+    "typecheck": "tsc",
+    "start": "node dist/main.mjs",
+    "test": "vitest run",
+    "lint": "oxlint --config ../../../.oxlintrc.json ."
+  },
+  "dependencies": {
+    "@domains/search": "workspace:*"
+  },
+  "nx": {
+    "tags": [
+      "type:app",
+      "platform:cli",
+      "lang:ts"
+    ]
+  }
+}
