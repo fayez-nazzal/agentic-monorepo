@@ -15,6 +15,7 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
+      - run: brew install swiftlint
       - run: pnpm install --frozen-lockfile
       - run: pnpm nx run-many -t typecheck build test lint
       - run: pnpm format:check
