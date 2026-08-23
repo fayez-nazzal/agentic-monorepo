@@ -2,7 +2,7 @@
   "$schema": "../../../node_modules/nx/schemas/project-schema.json",
   "name": "search-index",
   "projectType": "library",
-  "tags": ["type:domain", "domain:search", "lang:rust"],
+  "tags": ["type:rust", "domain:search", "lang:rust"],
   "targets": {
     "build": {
       "executor": "nx:run-commands",

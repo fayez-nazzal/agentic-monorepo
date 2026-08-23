@@ -46,7 +46,7 @@ Read the [architecture guide](docs/architecture.md) for placement rules and allo
 
 ## Quick start
 
-You need `Node.js` 22 or newer and `pnpm` 11.21.0. Full workspace checks also need `macOS` 14 or newer with `Swift` 6 and `SwiftLint`. They also need `Rust` 1.97 or newer.
+You need `Node.js` 22 or newer and `pnpm` 11.21.0. Full workspace checks also need `macOS` 14 or newer with `Swift` 6 and `SwiftLint`. They also need `Rust` 1.97.1 from the pinned `rust-toolchain.toml`.
 
 ```sh
 pnpm install
@@ -64,26 +64,26 @@ The JavaScript tools use exact versions. Native tools use declared language and 
 
 These choices target superior scalability and performance. Task caching avoids repeated work. Native toolchains keep incremental builds fast. Strict package isolation keeps growth predictable.
 
-| Technology            | Version                        | Why it is here                                       |
-| --------------------- | ------------------------------ | ---------------------------------------------------- |
-| `Node.js`             | 22 or newer                    | Mature runtime baseline for workspace automation     |
-| `pnpm`                | 11.21.0                        | Fast installs with strict dependency isolation       |
-| `Nx`                  | 23.1.1                         | One task graph with caching across every project     |
-| `TypeScript`          | 7.0.2                          | Fast native type checks with strict contracts        |
-| `Vite`                | 8.2.1                          | Fast web development and optimized production builds |
-| `Vitest`              | 4.1.10                         | Fast tests that share the web build pipeline         |
-| `tsdown`              | 0.22.14                        | High-speed library and command-line builds           |
-| `oxlint`              | 1.78.0                         | Fast semantic linting                                |
-| `oxlint-tsgolint`     | 7.0.2001                       | Type-aware rules on the native type engine           |
-| `oxfmt`               | 0.63.0                         | Fast formatting and import order                     |
-| `Swift` and `SwiftPM` | 6.0 tools level                | Strict native macOS code and package boundaries      |
-| `SwiftUI`             | macOS 14 SDK baseline          | Native interface development                         |
-| `swift format`        | Swift 6 toolchain              | Native formatting with strict checks                 |
-| `SwiftLint`           | Current Homebrew release       | Additional native semantic checks                    |
-| `macOS`               | 14 minimum target              | Modern platform APIs with a clear support baseline   |
-| `Rust`                | 1.97 minimum with 2024 edition | Native performance with memory safety                |
-| `Cargo` and `Clippy`  | Stable Rust toolchain          | Incremental builds and strict native checks          |
-| `rustfmt`             | Stable Rust toolchain          | Native formatting without another dependency         |
+| Technology            | Version                  | Why it is here                                       |
+| --------------------- | ------------------------ | ---------------------------------------------------- |
+| `Node.js`             | 22 or newer              | Mature runtime baseline for workspace automation     |
+| `pnpm`                | 11.21.0                  | Fast installs with strict dependency isolation       |
+| `Nx`                  | 23.1.1                   | One task graph with caching across every project     |
+| `TypeScript`          | 7.0.2                    | Fast native type checks with strict contracts        |
+| `Vite`                | 8.2.1                    | Fast web development and optimized production builds |
+| `Vitest`              | 4.1.10                   | Fast tests that share the web build pipeline         |
+| `tsdown`              | 0.22.14                  | High-speed library and command-line builds           |
+| `oxlint`              | 1.78.0                   | Fast semantic linting                                |
+| `oxlint-tsgolint`     | 7.0.2001                 | Type-aware rules on the native type engine           |
+| `oxfmt`               | 0.63.0                   | Fast formatting and import order                     |
+| `Swift` and `SwiftPM` | 6.0 tools level          | Strict native macOS code and package boundaries      |
+| `SwiftUI`             | macOS 14 SDK baseline    | Native interface development                         |
+| `swift format`        | Swift 6 toolchain        | Native formatting with strict checks                 |
+| `SwiftLint`           | Current Homebrew release | Additional native semantic checks                    |
+| `macOS`               | 14 minimum target        | Modern platform APIs with a clear support baseline   |
+| `Rust`                | 1.97.1 (2024 edition)    | Native performance with memory safety                |
+| `Cargo` and `Clippy`  | Rust 1.97.1 toolchain    | Incremental builds and strict native checks          |
+| `rustfmt`             | Rust 1.97.1 toolchain    | Native formatting without another dependency         |
 
 The `SwiftLint` version follows Homebrew because CI installs it directly.
 
