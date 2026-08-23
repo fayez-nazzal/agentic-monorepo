@@ -1,19 +1,29 @@
 import { execFileSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
-const graphFile = ".nx/boundaries-graph.json";
 const failureExitCode = 1;
 
 const allowedDependencyTags = {
   "type:app": ["type:domain", "type:platform", "type:infrastructure"],
   "type:domain": ["type:domain"],
   "type:platform": ["type:platform", "type:domain"],
+  "type:infrastructure": ["type:infrastructure", "type:platform", "type:domain"],
+  "type:rust": ["type:rust"],
 };
 
 function loadGraph() {
-  execFileSync("pnpm", ["exec", "nx", "graph", `--file=${graphFile}`], { stdio: "pipe" });
-  const parsed = JSON.parse(readFileSync(graphFile, "utf8"));
-  return parsed.graph;
+  const tempDir = mkdtempSync(join(tmpdir(), "boundaries-graph-"));
+  const graphFile = join(tempDir, "graph.json");
+  let graph = {};
+  try {
+    execFileSync("pnpm", ["exec", "nx", "graph", `--file=${graphFile}`], { stdio: "pipe" });
+    ({ graph } = JSON.parse(readFileSync(graphFile, "utf8")));
+  } finally {
+    rmSync(tempDir, { recursive: true, force: true });
+  }
+  return graph;
 }
 
 function tagsOf(node) {
@@ -28,6 +38,16 @@ function hasAnyTag(tags, allowed) {
   let result = false;
   for (const tag of tags) {
     if (allowed.includes(tag)) {
+      result = true;
+    }
+  }
+  return result;
+}
+
+function hasTypeTag(tags) {
+  let result = false;
+  for (const tag of tags) {
+    if (Object.hasOwn(allowedDependencyTags, tag)) {
       result = true;
     }
   }
@@ -77,8 +97,20 @@ function collectViolations(graph) {
   return found;
 }
 
+function missingTypeTagViolations(graph) {
+  const found = [];
+  for (const nodeName of Object.keys(graph.nodes)) {
+    const node = graph.nodes[nodeName];
+    const isWorkspaceRoot = node.data.root === ".";
+    if (!isWorkspaceRoot && !hasTypeTag(tagsOf(node))) {
+      found.push(`${nodeName} has no type tag`);
+    }
+  }
+  return found;
+}
+
 const graph = loadGraph();
-const violations = collectViolations(graph);
+const violations = [...collectViolations(graph), ...missingTypeTagViolations(graph)];
 for (const violation of violations) {
   console.error(violation);
 }
