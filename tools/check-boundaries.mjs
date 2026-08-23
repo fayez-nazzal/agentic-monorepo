@@ -47,7 +47,7 @@ function hasAnyTag(tags, allowed) {
 function hasTypeTag(tags) {
   let result = false;
   for (const tag of tags) {
-    if (tag.startsWith("type:")) {
+    if (Object.hasOwn(allowedDependencyTags, tag)) {
       result = true;
     }
   }
