@@ -1,5 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
+import { join } from "node:path";
 
 const graphFile = ".nx/boundaries-graph.json";
 const failureExitCode = 1;
@@ -77,8 +78,34 @@ function collectViolations(graph) {
   return found;
 }
 
+function typescriptDomainRoots(graph) {
+  const found = [];
+  for (const nodeName of Object.keys(graph.nodes)) {
+    const node = graph.nodes[nodeName];
+    const tags = tagsOf(node);
+    if (tags.includes("type:domain") && tags.includes("lang:ts")) {
+      found.push({ nodeName, root: node.data.root });
+    }
+  }
+  return found;
+}
+
+function thirdPartyDependencyViolations(graph) {
+  const found = [];
+  for (const entry of typescriptDomainRoots(graph)) {
+    const manifest = JSON.parse(readFileSync(join(entry.root, "package.json"), "utf8"));
+    const dependencies = manifest.dependencies ?? {};
+    for (const name of Object.keys(dependencies)) {
+      if (!dependencies[name].startsWith("workspace:")) {
+        found.push(`${entry.nodeName} has third-party runtime dependency ${name}`);
+      }
+    }
+  }
+  return found;
+}
+
 const graph = loadGraph();
-const violations = collectViolations(graph);
+const violations = [...collectViolations(graph), ...thirdPartyDependencyViolations(graph)];
 for (const violation of violations) {
   console.error(violation);
 }
