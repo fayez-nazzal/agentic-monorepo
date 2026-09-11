@@ -34,21 +34,40 @@ function hasAnyTag(tags, allowed) {
   return result;
 }
 
+function violationsForOutsideDomain(sourceName, sourceTag, targetName, targetTags) {
+  if (sourceTag.startsWith("domain:") && !targetTags.includes(sourceTag)) {
+    return [`${sourceName} (${sourceTag}) may not depend on ${targetName} outside its domain`];
+  }
+  return [];
+}
+
+function violationsForSourceTag(sourceName, sourceTag, targetName, targetTags) {
+  const found = [];
+  const allowed = allowedDependencyTags[sourceTag];
+  if (allowed && !hasAnyTag(targetTags, allowed)) {
+    found.push(`${sourceName} (${sourceTag}) may not depend on ${targetName}`);
+  }
+  found.push(...violationsForOutsideDomain(sourceName, sourceTag, targetName, targetTags));
+  return found;
+}
+
 function violationsForDependency(sourceName, sourceTags, targetName, targetTags) {
   const found = [];
   if (targetTags.includes("type:app")) {
     found.push(`${sourceName} depends on application ${targetName}`);
   }
   for (const sourceTag of sourceTags) {
-    const allowed = allowedDependencyTags[sourceTag];
-    if (allowed && !hasAnyTag(targetTags, allowed)) {
-      found.push(`${sourceName} (${sourceTag}) may not depend on ${targetName}`);
-    }
-    if (sourceTag.startsWith("domain:") && !targetTags.includes(sourceTag)) {
-      found.push(`${sourceName} (${sourceTag}) may not depend on ${targetName} outside its domain`);
-    }
+    found.push(...violationsForSourceTag(sourceName, sourceTag, targetName, targetTags));
   }
   return found;
+}
+
+function violationsForDependencyInGraph(graph, sourceName, sourceTags, dependency) {
+  const targetNode = graph.nodes[dependency.target];
+  if (!targetNode) {
+    return [];
+  }
+  return violationsForDependency(sourceName, sourceTags, dependency.target, tagsOf(targetNode));
 }
 
 function violationsForSource(graph, sourceName) {
@@ -57,13 +76,7 @@ function violationsForSource(graph, sourceName) {
   if (sourceNode) {
     const sourceTags = tagsOf(sourceNode);
     for (const dependency of graph.dependencies[sourceName]) {
-      const targetNode = graph.nodes[dependency.target];
-      if (targetNode) {
-        const targetTags = tagsOf(targetNode);
-        found.push(
-          ...violationsForDependency(sourceName, sourceTags, dependency.target, targetTags),
-        );
-      }
+      found.push(...violationsForDependencyInGraph(graph, sourceName, sourceTags, dependency));
     }
   }
   return found;
