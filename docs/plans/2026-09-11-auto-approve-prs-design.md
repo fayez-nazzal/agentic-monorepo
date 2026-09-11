@@ -14,12 +14,12 @@ Approval only. No auto-merge, the human merges manually and stays the last gate.
 
 ## Key decisions
 
-- **Token: GitHub App** named `Roxy Migrudia Bot`, bot identity `Roxy-Migrudia-Bot[bot]`. The default `GITHUB_TOKEN` cannot approve Dependabot PRs (read-only on Dependabot runs) or PRs opened by the workflow trigger user, so a separate identity is required. Chosen over a PAT so the credential is not tied to the personal account and is reusable across future repos.
+- **Token: GitHub App** named `Roxy Migurdia Bot`, bot identity `roxy-migurdia-bot[bot]`. The default `GITHUB_TOKEN` cannot approve Dependabot PRs (read-only on Dependabot runs) or PRs opened by the workflow trigger user, so a separate identity is required. Chosen over a PAT so the credential is not tied to the personal account and is reusable across future repos.
 - **Trigger: `pull_request_target`**, because Dependabot PR workflow runs cannot read repo secrets, so a plain `pull_request` trigger would fail at the token step. Safe here since the job never checks out or executes PR code, it only approves.
 - **Guard: two allowed authors only.** `github.actor == 'dependabot[bot]'` or `github.event.pull_request.user.login == github.repository_owner`. Everyone else is skipped.
 - **App permissions: minimal.** Webhooks off, only `Pull requests: Read and write` on the single repo.
 - **Review resolution gating: native branch protection only.** Roxy approves immediately without inspecting comment state. GitHub fires no workflow event when a review thread is resolved, so workflow-side gating would need polling. The native "Require conversation resolution" setting gives a real-time merge gate with zero custom logic.
-- **Branch protection on `main`: required.** Without it, approvals and resolution gating have no teeth. Rule: require a pull request before merging, 1 approval, dismiss stale approvals, require the `verify` status check, require conversation resolution. Roxy's approval satisfies the approval count for owner and Dependabot PRs; PRs from others still need a human review.
+- **Branch protection on `main`: required.** Without it, approvals and resolution gating have no teeth. Implemented via the existing ruleset `PR-merge-check` rather than classic branch protection: require a pull request, 1 approval, dismiss stale approvals on push, require conversation resolution, require the `verify` status check. Roxy's approval satisfies the approval count for owner and Dependabot PRs; PRs from others still need a human review.
 
 ## Workflow
 
