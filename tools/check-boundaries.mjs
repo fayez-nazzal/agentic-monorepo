@@ -40,13 +40,19 @@ function violationsForDependency(sourceName, sourceTags, targetName, targetTags)
     found.push(`${sourceName} depends on application ${targetName}`);
   }
   for (const sourceTag of sourceTags) {
-    const allowed = allowedDependencyTags[sourceTag];
-    if (allowed && !hasAnyTag(targetTags, allowed)) {
-      found.push(`${sourceName} (${sourceTag}) may not depend on ${targetName}`);
-    }
-    if (sourceTag.startsWith("domain:") && !targetTags.includes(sourceTag)) {
-      found.push(`${sourceName} (${sourceTag}) may not depend on ${targetName} outside its domain`);
-    }
+    found.push(...violationsForSourceTag(sourceName, sourceTag, targetName, targetTags));
+  }
+  return found;
+}
+
+function violationsForSourceTag(sourceName, sourceTag, targetName, targetTags) {
+  const found = [];
+  const allowed = allowedDependencyTags[sourceTag];
+  if (allowed && !hasAnyTag(targetTags, allowed)) {
+    found.push(`${sourceName} (${sourceTag}) may not depend on ${targetName}`);
+  }
+  if (sourceTag.startsWith("domain:") && !targetTags.includes(sourceTag)) {
+    found.push(`${sourceName} (${sourceTag}) may not depend on ${targetName} outside its domain`);
   }
   return found;
 }
@@ -57,16 +63,19 @@ function violationsForSource(graph, sourceName) {
   if (sourceNode) {
     const sourceTags = tagsOf(sourceNode);
     for (const dependency of graph.dependencies[sourceName]) {
-      const targetNode = graph.nodes[dependency.target];
-      if (targetNode) {
-        const targetTags = tagsOf(targetNode);
-        found.push(
-          ...violationsForDependency(sourceName, sourceTags, dependency.target, targetTags),
-        );
-      }
+      found.push(...violationsForTarget(graph, sourceName, sourceTags, dependency));
     }
   }
   return found;
+}
+
+function violationsForTarget(graph, sourceName, sourceTags, dependency) {
+  const targetNode = graph.nodes[dependency.target];
+  if (!targetNode) {
+    return [];
+  }
+  const targetTags = tagsOf(targetNode);
+  return violationsForDependency(sourceName, sourceTags, dependency.target, targetTags);
 }
 
 function collectViolations(graph) {

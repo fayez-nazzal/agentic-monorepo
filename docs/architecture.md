@@ -26,7 +26,7 @@ Every project declares tags. TypeScript projects declare them in the `nx` field 
 - Platform libraries may depend on platform and domain libraries.
 - Nothing depends on an app.
 
-`tools/check-boundaries.mjs` enforces these rules for every project by reading the Nx graph and project tags. It runs as the `workspace:lint` target. Three layers make the enforcement complete for TypeScript. pnpm strict isolation blocks imports of undeclared packages. An `oxlint` restricted import pattern blocks relative paths that escape a project. The graph checker blocks declared dependencies that break a tag rule. Swift and Rust dependencies are declared in `Package.swift` and `Cargo.toml`. Mirror them in `implicitDependencies` inside `project.json` so the Nx graph stays true.
+`tools/check-boundaries.mjs` enforces these rules for every project by reading the Nx graph and project tags. The root `lint` script runs `oxlint` over `apps`, `libs`, and `tools`, then runs the boundary checker, so the same TypeScript rules apply to applications, libraries, and repository automation. It runs as the `workspace:lint` target. Three layers make the enforcement complete for TypeScript. pnpm strict isolation blocks imports of undeclared packages. An `oxlint` restricted import pattern blocks relative paths that escape a project. The graph checker blocks declared dependencies that break a tag rule. Swift and Rust dependencies are declared in `Package.swift` and `Cargo.toml`. Mirror them in `implicitDependencies` inside `project.json` so the Nx graph stays true.
 
 ## Tool rules
 
