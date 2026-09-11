@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "lint": "oxlint tools && node tools/check-boundaries.mjs",
+    "lint": "oxlint apps libs tools && node tools/check-boundaries.mjs",
     "format": "oxfmt",
     "format:check": "oxfmt --check"
   },
@@ -32,6 +32,8 @@
       "lint": {
         "dependsOn": [],
         "inputs": [
+          "{workspaceRoot}/apps/**/*",
+          "{workspaceRoot}/libs/**/*",
           "{workspaceRoot}/tools/**/*",
           "{workspaceRoot}/.oxlintrc.json",
           "{workspaceRoot}/**/project.json",
