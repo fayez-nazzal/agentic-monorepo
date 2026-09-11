@@ -1,0 +1,25 @@
+name: auto-approve
+
+on:
+  pull_request_target:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  approve:
+    runs-on: ubuntu-latest
+    if: >-
+      github.actor == 'dependabot[bot]' ||
+      github.event.pull_request.user.login == github.repository_owner
+    steps:
+      - id: app-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+
+      - uses: hmarr/auto-approve-action@v4
+        with:
+          github-token: ${{ steps.app-token.outputs.token }}
