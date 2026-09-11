@@ -72,7 +72,7 @@ The same two secrets work for any future repo, only the App install step differs
 
 ## Verification
 
-- Own PR path: open a low-risk test PR, confirm the workflow runs green and `Roxy-Migrudia-Bot[bot]` approval appears
+- Own PR path: open a low-risk test PR, confirm the workflow runs green and `roxy-migurdia-bot[bot]` approval appears
 - Merge gate: on the same test PR, leave a review comment unresolved and confirm merge is blocked, then resolve it and confirm merge unlocks
 - Direct push gate: confirm a direct push to `main` is now rejected
 - Dependabot path: confirm on the next weekly `npm` bump PR, no manual trigger exists
