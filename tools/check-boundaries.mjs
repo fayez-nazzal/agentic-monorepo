@@ -179,7 +179,7 @@ function parseDependencyCrates(manifest) {
     const line = stripTomlComment(rawLine).trim();
     const header = line.match(/^\[(?<name>[^\]]+)\]$/u);
     if (header) {
-      inDependencyTable = header.groups.name.trim().endsWith("dependencies");
+      inDependencyTable = /(?:^|\.)dependencies(?:\.|$)/u.test(header.groups.name.trim());
       continue;
     }
     if (!inDependencyTable) continue;
