@@ -10,7 +10,7 @@
     }
   },
   "scripts": {
-    "build": "tsdown",
+    "build": "tsdown --config tsdown.config.mjs",
     "typecheck": "tsc",
     "test": "vitest run",
     "lint": "oxlint --config ../../../.oxlintrc.json ."

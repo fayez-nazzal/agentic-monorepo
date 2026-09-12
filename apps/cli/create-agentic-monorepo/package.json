@@ -10,7 +10,7 @@
     "linkDirectory": false
   },
   "scripts": {
-    "build": "tsdown && node scripts/package.mjs",
+    "build": "tsdown --config tsdown.config.mjs && node scripts/package.mjs",
     "typecheck": "tsc",
     "start": "node dist/package/dist/main.mjs",
     "test": "vitest run",
