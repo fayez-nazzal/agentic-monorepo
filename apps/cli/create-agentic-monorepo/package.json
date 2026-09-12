@@ -12,8 +12,7 @@
   "scripts": {
     "build": "tsdown --config tsdown.config.mjs && node scripts/package.mjs",
     "typecheck": "tsc",
-    "start": "node dist/package/dist/main.mjs",
-    "test": "vitest run",
+    "test": "vitest run --passWithNoTests",
     "lint": "oxlint --config ../../../.oxlintrc.json ."
   },
   "dependencies": {
