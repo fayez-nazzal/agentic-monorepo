@@ -29,6 +29,10 @@ jobs:
           cache: pnpm
       - id: install-dependencies
         run: pnpm install --frozen-lockfile
+      - id: build-domain
+        run: pnpm --dir libs/domains/scaffolding build
+      - id: build-node-adapter
+        run: pnpm --dir libs/platform/node/scaffolding build
       - id: build-creator
         run: pnpm --dir apps/cli/create-agentic-monorepo build
       - id: smoke-creator

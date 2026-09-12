@@ -8,13 +8,5 @@ export default defineConfig({
   deps: {
     alwaysBundle: ["@domains/scaffolding", "@platform/node-scaffolding"],
     neverBundle: ["@clack/prompts", "picocolors", "yaml", "cross-spawn"],
-    onlyImport: [
-      "@domains/scaffolding",
-      "@platform/node-scaffolding",
-      "@clack/prompts",
-      "picocolors",
-      "yaml",
-      "cross-spawn",
-    ],
   },
 });
