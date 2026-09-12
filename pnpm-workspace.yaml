@@ -1,6 +1,7 @@
 packages:
   - "apps/**"
   - "libs/**"
+  - "!apps/cli/create-agentic-monorepo/dist/**"
 allowBuilds:
   nx: true
 minimumReleaseAge: 2880

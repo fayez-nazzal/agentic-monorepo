@@ -9,17 +9,19 @@
   },
   "devDependencies": {
     "@types/node": "26.4.1",
+    "cross-spawn": "7.0.6",
     "nx": "23.2.0",
     "oxfmt": "0.66.0",
     "oxlint": "1.81.0",
     "oxlint-tsgolint": "7.0.2001",
     "tsdown": "0.22.14",
     "typescript": "7.0.2",
+    "unrun": "0.3.1",
     "vite": "8.2.2",
     "vitest": "4.1.11"
   },
   "engines": {
-    "node": ">=22"
+    "node": ">=22.13.0"
   },
   "packageManager": "pnpm@11.21.0",
   "nx": {
