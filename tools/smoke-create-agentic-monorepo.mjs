@@ -15,7 +15,7 @@ const run = (command, args, cwd = root) => {
   if (process.platform === "win32") {
     const quote = (value) => `"${value.replaceAll('"', '\\"')}"`;
     executable = process.env["ComSpec"] ?? "cmd.exe";
-    commandArgs = ["/d", "/s", "/c", [command, ...args].map(quote).join(" ")];
+    commandArgs = ["/d", "/s", "/c", [command, ...args.map(quote)].join(" ")];
   }
   const result = spawnSync(executable, commandArgs, {
     cwd,
