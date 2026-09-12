@@ -3,127 +3,199 @@
 [![ci](https://github.com/fayez-nazzal/agentic-monorepo/actions/workflows/ci.yml/badge.svg)](https://github.com/fayez-nazzal/agentic-monorepo/actions/workflows/ci.yml)
 [![license](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-Start organized. Stay organized as you scale.
+**A monorepo starter for TypeScript, Swift, and Rust that stays clear as it grows, with a CLI that scaffolds it in one command.**
 
-A ready-to-build foundation for software that must stay clear as it grows.
+Agentic Monorepo is an [Nx](https://nx.dev) and [pnpm](https://pnpm.io) workspace where each business domain lives in its own library behind a small public interface, architecture rules are enforced by an automated boundary check, and every project exposes the same `build`, `typecheck`, `test`, and `lint` targets. Because code is grouped by business capability instead of technical layer, a developer or an AI coding agent can work inside one domain instead of loading the whole repository.
 
-Business domains stay separate. Architecture rules stay enforceable. Every command gives predictable feedback.
-
-AI agents can load only the domain they need. Smaller context uses fewer tokens. Clear ownership reduces noise. Work stays fast and reliable.
-
-Start with working examples. Replace them with your domains. Keep the structure as the product grows.
-
-## What you get
-
-- **A structure built to scale.** Business capabilities stay separate behind small public interfaces.
-- **Lower token use.** Agents can work inside one domain without loading the whole repository.
-- **Predictable feedback.** Each failure has one owner and one clear signal.
-- **Enforced boundaries.** Automated checks stop accidental coupling before it spreads.
-- **Faster work.** Formatting fixes itself and cached tasks do not run twice.
-- **Secure defaults.** Exact versions and a 48-hour release delay reduce supply-chain risk.
-- **Room to grow.** Apps compose domain libraries instead of collecting reusable business logic.
-
-## Architecture that stays clear
-
-The folder structure follows the business. Each domain owns its rules and language. It also owns its tests and public interface.
-
-Apps compose domains. Platform libraries wrap device services. Infrastructure is added only for a real persistence or networking need.
-
-This separation keeps each change local. Humans see less unrelated code. Agents spend fewer tokens. Teams can grow without making every part depend on every other part.
-
-| Purpose                 | Location                           |
-| ----------------------- | ---------------------------------- |
-| Business domain rules   | `libs/domains/<domain>`            |
-| Platform integrations   | `libs/platform/<platform>/<area>`  |
-| Persistence and network | `libs/infrastructure/<capability>` |
-| Rust core and bindings  | `libs/rust/<crate>`                |
-| Product entry points    | `apps/<platform>/<app>`            |
-| Repository automation   | `tools`                            |
-
-The boundary checker enforces this model across every project. Domain code cannot reach into unrelated domains. Rust cores stay FFI-free; bindings own language-specific glue. Nothing can depend on an app.
-
-Read the [architecture guide](docs/architecture.md) for placement rules and allowed dependencies.
+Use `create-agentic-monorepo` to generate a new repository with only the starters you pick: a web app, a Node CLI, a native macOS app, an independent Rust library, or nothing but the workspace itself.
 
 ## Quick start
 
-You need `Node.js` 22 or newer and `pnpm` 11.21.0. Full workspace checks also need `macOS` 14 or newer with `Swift` 6 and `SwiftLint`. They also need the pinned Rust `1.97.1` toolchain with `clippy` and `rustfmt`.
+> [!NOTE]
+> `create-agentic-monorepo` is not on npm yet. Build it from this repository as shown below, and read `create-agentic-monorepo` in later examples as `node apps/cli/create-agentic-monorepo/dist/package/dist/main.mjs`.
+
+You need [Node.js](https://nodejs.org) 22.13 or newer and [pnpm](https://pnpm.io/installation) 11.21.0. The web and CLI starters need nothing else and work on macOS, Linux, and Windows.
+
+### 1. Build the CLI
 
 ```sh
-pnpm install
+git clone https://github.com/fayez-nazzal/agentic-monorepo.git
+cd agentic-monorepo
+pnpm install --frozen-lockfile
+pnpm nx run create-agentic-monorepo:build
+```
+
+### 2. Create your repository
+
+```sh
+node apps/cli/create-agentic-monorepo/dist/package/dist/main.mjs ../my-product
+```
+
+The wizard asks for the location, the starter, and whether to install dependencies and initialize Git, then shows exactly what it will do before writing a single file. The destination must be a new or empty directory, and nothing is ever overwritten.
+
+Already know what you want? Skip the questions:
+
+```sh
+node apps/cli/create-agentic-monorepo/dist/package/dist/main.mjs ../my-product --preset web --yes
+```
+
+### 3. Start developing
+
+```sh
+cd ../my-product
+pnpm install --frozen-lockfile
+pnpm nx run web-example-app:build
+pnpm nx run web-example-app:dev
+```
+
+Vite prints a local URL. Open it and you will see the example app rendering results from the shared search domain. Replace that domain with your own and keep building.
+
+> [!TIP]
+> `--list` shows every starter, `--dry-run` prints the plan without creating anything, and `--install --git` lets the CLI run `pnpm install --frozen-lockfile` and `git init` for you.
+
+<details>
+<summary>Once the package is published to npm</summary>
+
+```sh
+pnpm create agentic-monorepo my-product
+npx create-agentic-monorepo my-product --preset web --yes
+```
+
+</details>
+
+## Choose a starter
+
+| Preset      | You get                                                                         | Also needs                                 |
+| ----------- | ------------------------------------------------------------------------------- | ------------------------------------------ |
+| `web`       | `apps/web/example-app` (TypeScript + Vite) and the shared `libs/domains/search` | —                                          |
+| `cli`       | `apps/cli/example-app` (Node + TypeScript) and the shared `libs/domains/search` | —                                          |
+| `mac`       | `apps/mac/example-app` (SwiftUI) and `libs/platform/mac/filesystem`             | macOS 14+, Swift 6, SwiftLint              |
+| `web-cli`   | The web and CLI apps sharing one search domain                                  | —                                          |
+| `full`      | All three apps plus the independent `libs/rust/search-index`                    | macOS 14+, Swift 6, SwiftLint, Rust 1.97.1 |
+| `workspace` | Workspace tooling, configuration, CI, and architecture docs, with no app yet    | —                                          |
+
+Every starter includes the pinned toolchain, the boundary check, and a CI workflow matched to your selection. Build your own mix with `--apps web,cli,mac` (or `--apps none`) plus `--rust`, for example `--apps cli --rust`.
+
+The Rust library is deliberately independent: it is a standalone crate, not a binding wired into an app.
+
+<details>
+<summary>Starters that are listed but not available yet</summary>
+
+React, Next.js, Vue, SvelteKit, Astro, Node API, iOS, Android, Expo, Electron, Tauri, and Rust application bindings appear in `--list` as **Coming soon**. No starter exists for them yet, so the CLI rejects them instead of generating something that does not work.
+
+</details>
+
+## CLI options
+
+| Option                | What it does                                                                                                                         |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `[destination]`       | Directory to create; must be new or empty. Its name becomes the default package name.                                                |
+| `--preset <id>`       | `web`, `cli`, `mac`, `web-cli`, `full`, or `workspace`                                                                               |
+| `--apps <csv>`        | Any mix of `web`, `cli`, `mac`, or `none`                                                                                            |
+| `--rust`, `--no-rust` | Include or exclude the independent Rust library                                                                                      |
+| `--name <name>`       | Root package name in lower-kebab-case                                                                                                |
+| `--install`, `--git`  | After the files are written, run `pnpm install --frozen-lockfile` and `git init --initial-branch=main`; both stay off unless you ask |
+| `--config <path>`     | Reuse a saved `agentic.config.json`                                                                                                  |
+| `--yes`, `-y`         | Never prompt; falls back to the `web` preset when no starter is given                                                                |
+| `--dry-run`           | Print the plan and write nothing                                                                                                     |
+| `--json`              | Print one machine-readable result on stdout                                                                                          |
+| `--plain`             | Line-based ASCII prompts for limited terminals                                                                                       |
+| `--list`              | Print the starters and capabilities, then exit                                                                                       |
+| `--help`, `--version` | Usage and version                                                                                                                    |
+
+## Repeat a setup
+
+Every generated repository contains an `agentic.config.json` recording the resolved name, the selected apps, the Rust choice, and the template version and digest it came from. Feed it back to reproduce the same repository:
+
+```sh
+create-agentic-monorepo my-other-product --config ./agentic.config.json
+```
+
+Explicit flags win over the file, and a recorded version or digest that no longer matches stops the run instead of quietly generating something different. Dependency installation and Git setup are not recorded, so add `--install` or `--git` when you want them.
+
+## Architecture
+
+Folders follow the business, not the framework.
+
+| Purpose                          | Location                                                |
+| -------------------------------- | ------------------------------------------------------- |
+| Business rules for one domain    | `libs/domains/<domain>`                                 |
+| Wrapper around one OS capability | `libs/platform/<platform>/<capability>`                 |
+| Persistence and networking       | `libs/infrastructure/<capability>`                      |
+| Rust cores and their bindings    | `libs/rust/<crate>` and `libs/rust/<crate>-<ecosystem>` |
+| Product entry points             | `apps/<platform>/<app>`                                 |
+| Repository automation            | `tools`                                                 |
+
+- Apps compose libraries and own no reusable business logic.
+- A domain library depends only on libraries in its own domain.
+- Rust cores stay FFI-free; binding crates own the language-crossing edge.
+- Nothing depends on an app.
+
+```mermaid
+graph LR
+  apps["apps/*"] --> domains["libs/domains/*"]
+  apps --> platform["libs/platform/*"]
+  apps --> infra["libs/infrastructure/*"]
+  apps --> bindings["libs/rust/*-bindings"]
+  infra --> platform
+  infra --> domains
+  bindings --> cores["libs/rust/* cores"]
+```
+
+`tools/check-boundaries.mjs` reads the Nx graph and project tags, then fails the `lint` target when a dependency breaks these rules. The [architecture guide](docs/architecture.md) is the full placement and dependency reference.
+
+## Example projects
+
+| Project                                                        | What it is                                                   |
+| -------------------------------------------------------------- | ------------------------------------------------------------ |
+| [`apps/web/example-app`](apps/web/example-app)                 | Vanilla TypeScript browser app built with Vite               |
+| [`apps/cli/example-app`](apps/cli/example-app)                 | Node command-line app that formats a search query            |
+| [`apps/mac/example-app`](apps/mac/example-app)                 | Native SwiftUI app targeting macOS 14+                       |
+| [`libs/domains/search`](libs/domains/search)                   | Pure TypeScript search domain shared by the web and CLI apps |
+| [`libs/platform/mac/filesystem`](libs/platform/mac/filesystem) | SwiftPM library for macOS filesystem locations               |
+| [`libs/rust/search-index`](libs/rust/search-index)             | Standalone Rust library for search indexing                  |
+
+The examples exist to be replaced. To make the repository yours:
+
+1. Name libraries after business capabilities, not technical layers.
+2. Keep reusable rules inside domain libraries and let apps compose them.
+3. Tag every new project with its type, domain, platform, and language so the boundary check protects it.
+
+## Everyday commands
+
+| Task                            | Command                                         |
+| ------------------------------- | ----------------------------------------------- |
+| Install exactly the pinned tree | `pnpm install --frozen-lockfile`                |
+| Verify every project            | `pnpm nx run-many -t typecheck build test lint` |
+| Format, or check formatting     | `pnpm format`, `pnpm format:check`              |
+| Explore the project graph       | `pnpm nx graph`                                 |
+| Run a single target             | `pnpm nx run <project>:<target>`                |
+
+Each project README lists its own targets. Nx runs upstream builds before `typecheck`, `test`, `lint`, and `build`, and caches those TypeScript tasks; Swift and Rust builds are left to their own toolchains. Development servers are not build-gated, so run an app's `build` before its `dev` or `start` target the first time.
+
+## Toolchain
+
+| Tool                             | Role                                                | Version                                 |
+| -------------------------------- | --------------------------------------------------- | --------------------------------------- |
+| Node.js                          | Runtime for the workspace tooling and CLI starter   | 22.13 or newer                          |
+| pnpm                             | Workspace installs with strict dependency isolation | 11.21.0, pinned by `packageManager`     |
+| Nx                               | Project graph, task running, caching                | pinned in `package.json`                |
+| TypeScript, Vite, Vitest, tsdown | Types, web dev and build, tests, library bundles    | pinned in `package.json`                |
+| oxlint, oxfmt                    | Semantic linting, formatting and import order       | pinned in `package.json`                |
+| Swift, SwiftPM, SwiftLint        | Native macOS code, only for the Mac starter         | Swift 6 tools, macOS 14 baseline        |
+| Rust, Cargo, Clippy, rustfmt     | Native library work, only for the Rust selection    | 1.97.1, pinned by `rust-toolchain.toml` |
+
+JavaScript dependencies are pinned to exact versions, and `minimumReleaseAge: 2880` in `pnpm-workspace.yaml` keeps releases younger than 48 hours out of resolution.
+
+## Working on this repository
+
+```sh
+pnpm install --frozen-lockfile
 pnpm nx run-many -t typecheck build test lint
 pnpm format:check
 ```
 
-These commands match the checks run by CI.
-
-## Carefully chosen technologies
-
-The stack combines a mature runtime baseline with recent build tools and modern language editions. Every choice is deliberate.
-
-The JavaScript tools use exact versions. Native tools use declared language and platform baselines. Each tool has one role. No tool repeats work owned by another tool.
-
-These choices target superior scalability and performance. Task caching avoids repeated work. Native toolchains keep incremental builds fast. Strict package isolation keeps growth predictable.
-
-| Technology            | Version                  | Why it is here                                       |
-| --------------------- | ------------------------ | ---------------------------------------------------- |
-| `Node.js`             | 22 or newer              | Mature runtime baseline for workspace automation     |
-| `pnpm`                | 11.21.0                  | Fast installs with strict dependency isolation       |
-| `Nx`                  | 23.1.1                   | One task graph with caching across every project     |
-| `TypeScript`          | 7.0.2                    | Fast native type checks with strict contracts        |
-| `Vite`                | 8.2.1                    | Fast web development and optimized production builds |
-| `Vitest`              | 4.1.10                   | Fast tests that share the web build pipeline         |
-| `tsdown`              | 0.22.14                  | High-speed library and command-line builds           |
-| `oxlint`              | 1.78.0                   | Fast semantic linting                                |
-| `oxlint-tsgolint`     | 7.0.2001                 | Type-aware rules on the native type engine           |
-| `oxfmt`               | 0.63.0                   | Fast formatting and import order                     |
-| `Swift` and `SwiftPM` | 6.0 tools level          | Strict native macOS code and package boundaries      |
-| `SwiftUI`             | macOS 14 SDK baseline    | Native interface development                         |
-| `swift format`        | Swift 6 toolchain        | Native formatting with strict checks                 |
-| `SwiftLint`           | Current Homebrew release | Additional native semantic checks                    |
-| `macOS`               | 14 minimum target        | Modern platform APIs with a clear support baseline   |
-| `Rust`                | 1.97.1 (2024 edition)    | Native performance with memory safety                |
-| `Cargo` and `Clippy`  | 1.97.1                   | Incremental builds and strict native checks          |
-| `rustfmt`             | 1.97.1                   | Native formatting without another dependency         |
-
-The `SwiftLint` version follows Homebrew because CI installs it directly.
-
-## Repository map
-
-### Apps
-
-| Project                                        | Description                      |
-| ---------------------------------------------- | -------------------------------- |
-| [`apps/mac/example-app`](apps/mac/example-app) | Native macOS interface example   |
-| [`apps/web/example-app`](apps/web/example-app) | Browser application example      |
-| [`apps/cli/example-app`](apps/cli/example-app) | Command-line application example |
-
-### Libraries
-
-| Project                                                        | Description                            |
-| -------------------------------------------------------------- | -------------------------------------- |
-| [`libs/domains/search`](libs/domains/search)                   | Pure search business domain            |
-| [`libs/platform/mac/filesystem`](libs/platform/mac/filesystem) | macOS filesystem integration           |
-| [`libs/rust/search-index`](libs/rust/search-index)             | High-performance search indexing crate |
-
-## Common commands
-
-| Task                   | Command                                         |
-| ---------------------- | ----------------------------------------------- |
-| Install dependencies   | `pnpm install`                                  |
-| Verify every project   | `pnpm nx run-many -t typecheck build test lint` |
-| Fix formatting         | `pnpm format`                                   |
-| Check formatting       | `pnpm format:check`                             |
-| View the project graph | `pnpm nx graph`                                 |
-
-Each project `README` lists its own build and run commands. It also lists its test and lint commands.
-
-## Make it yours
-
-1. Replace the `search` examples with the first real business domain.
-2. Name domains after business capabilities instead of technical layers.
-3. Keep reusable business rules inside domain libraries.
-4. Add project tags so the boundary checker can protect every new dependency.
-5. Let apps assemble domains without becoming homes for shared business logic.
+These are the commands CI runs on macOS. The full sweep includes the Swift and Rust projects, so it needs macOS 14 or newer with Swift 6 and SwiftLint plus the pinned Rust 1.97.1 toolchain; the web and CLI projects alone need only Node and pnpm. CI also packs the CLI and creates a repository from the packed artifact on Ubuntu, Windows, and macOS. Read the [architecture guide](docs/architecture.md) before adding a project.
 
 ## License
 
