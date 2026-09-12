@@ -13,13 +13,13 @@ const run = (command, args, cwd = root) => {
   const result = spawnSync(command, args, {
     cwd,
     stdio: "inherit",
-    env: { ...process.env, NX_DAEMON: "false" },
   });
   if (result.error) throw result.error;
   if (result.status !== 0) throw new Error(`${command} exited ${result.status}`);
 };
 try {
-  run("pnpm", [
+  const pnpm = process.platform === "win32" ? "pnpm.cmd" : "pnpm";
+  run(pnpm, [
     "--dir",
     "apps/cli/create-agentic-monorepo",
     "pack",
