@@ -12,6 +12,7 @@
         "{workspaceRoot}/libs/platform/node/scaffolding/**/*",
         "{workspaceRoot}/package.json",
         "{workspaceRoot}/pnpm-lock.yaml",
+        "{workspaceRoot}/README.md",
         "{projectRoot}/scripts/package.mjs"
       ],
       "outputs": ["{projectRoot}/dist"]

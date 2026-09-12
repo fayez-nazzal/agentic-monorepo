@@ -1,39 +1,47 @@
 /* eslint-disable */
 import { spawn, spawnSync } from "node:child_process";
-import { mkdir, mkdtemp, readFile, rm } from "node:fs/promises";
+import { parseArgs } from "node:util";
+import { mkdir, mkdtemp, readFile, readdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
+import crossSpawn from "cross-spawn";
+
 const root = resolve(import.meta.dirname, "..");
-const mode = process.argv[process.argv.indexOf("--mode") + 1] ?? "portable";
+const { values } = parseArgs({
+  options: {
+    mode: { type: "string", default: "portable" },
+    package: { type: "string" },
+  },
+  strict: true,
+});
+const mode = values.mode;
 if (!new Set(["portable", "native", "dev"]).has(mode))
   throw new Error("--mode must be portable, native, or dev");
+if (values.package === "")
+  throw new Error("--package must not be empty");
 const temp = await mkdtemp(join(tmpdir(), "agentic-monorepo-smoke-"));
 const run = (command, args, cwd = root) => {
-  const result = spawnSync(command, args, {
-    cwd,
-    stdio: "inherit",
-    ...(process.platform === "win32" && command !== "node" ? { shell: true } : {}),
-  });
+  const result = crossSpawn.sync(command, args, { cwd, stdio: "inherit" });
   if (result.error) throw result.error;
   if (result.status !== 0) throw new Error(`${command} exited ${result.status}`);
 };
 
-async function packCreator() {
-  const pnpm = "pnpm";
-  run(pnpm, [
-    "--dir",
-    "apps/cli/create-agentic-monorepo",
-    "pack",
-    "--pack-destination",
-    temp,
-    "--json",
-  ]);
-  const archive = (await import("node:fs/promises"))
-    .readdir(temp)
-    .then((names) => names.find((name) => name.endsWith(".tgz")));
-  const archiveName = await archive;
-  if (!archiveName) throw new Error("pnpm pack produced no tarball");
+async function installCreator(packageSpec) {
+  let installSpec = packageSpec;
+  if (installSpec === undefined) {
+    run("pnpm", [
+      "--dir",
+      "apps/cli/create-agentic-monorepo",
+      "pack",
+      "--pack-destination",
+      temp,
+      "--json",
+    ]);
+    const archiveName = (await readdir(temp)).find((name) => name.endsWith(".tgz"));
+    if (!archiveName) throw new Error("pnpm pack produced no tarball");
+    installSpec = join(temp, archiveName);
+  }
   const consumer = join(temp, "consumer");
   run("npm", [
     "install",
@@ -42,17 +50,20 @@ async function packCreator() {
     "--ignore-scripts",
     "--no-audit",
     "--no-fund",
-    join(temp, archiveName),
+    "--registry=https://registry.npmjs.org",
+    installSpec,
   ]);
   return consumer;
 }
 
 function generate(consumer, destination, args) {
-  run("node", [
-    join(consumer, "node_modules/create-agentic-monorepo/dist/main.mjs"),
-    destination,
-    ...args,
-  ]);
+  const executable = join(
+    consumer,
+    "node_modules",
+    ".bin",
+    process.platform === "win32" ? "create-agentic-monorepo.cmd" : "create-agentic-monorepo",
+  );
+  run(executable, [destination, ...args], consumer);
 }
 
 function terminateTree(child) {
@@ -118,7 +129,7 @@ async function runDevSmoke(destination) {
 }
 
 try {
-  const consumer = await packCreator();
+  const consumer = await installCreator(values.package);
   const destination = join(temp, "scaffold smoke & check", mode);
   await mkdir(join(temp, "scaffold smoke & check"), { recursive: true });
   if (mode === "dev") {

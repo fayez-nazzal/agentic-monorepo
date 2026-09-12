@@ -1,0 +1,64 @@
+name: publish-create-agentic-monorepo
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  publish:
+    if: >-
+      github.repository == 'fayez-nazzal/agentic-monorepo' &&
+      github.event.release.prerelease == false &&
+      startsWith(github.event.release.tag_name, 'create-agentic-monorepo-v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - id: checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - id: setup-pnpm
+        uses: pnpm/action-setup@v4
+      - id: setup-node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24.x"
+          registry-url: https://registry.npmjs.org
+      - id: setup-npm
+        run: npm install --global npm@11.19.1
+      - id: release-version
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          node <<'NODE'
+          const { readFileSync } = require("node:fs");
+          const manifest = JSON.parse(readFileSync("apps/cli/create-agentic-monorepo/package.json", "utf8"));
+          const versionPattern = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
+          if (
+            manifest.name !== "create-agentic-monorepo" ||
+            !versionPattern.test(manifest.version) ||
+            process.env.RELEASE_TAG !== `create-agentic-monorepo-v${manifest.version}`
+          ) {
+            throw new Error("Release tag must match a stable create-agentic-monorepo package version");
+          }
+          require("node:fs").appendFileSync(process.env.GITHUB_OUTPUT, `version=${manifest.version}\n`);
+          NODE
+      - id: install-dependencies
+        run: pnpm install --frozen-lockfile
+      - id: build-domain
+        run: pnpm --dir libs/domains/scaffolding build
+      - id: build-node-adapter
+        run: pnpm --dir libs/platform/node/scaffolding build
+      - id: build-creator
+        run: pnpm --dir apps/cli/create-agentic-monorepo build
+      - id: smoke-local
+        run: node tools/smoke-create-agentic-monorepo.mjs --mode portable
+      - id: publish
+        run: npm publish ./apps/cli/create-agentic-monorepo/dist/package --access public --tag latest --registry=https://registry.npmjs.org
+      - id: smoke-registry
+        env:
+          VERSION: ${{ steps.release-version.outputs.version }}
+        run: node tools/smoke-create-agentic-monorepo.mjs --mode portable --package "create-agentic-monorepo@$VERSION"
