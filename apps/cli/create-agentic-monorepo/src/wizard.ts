@@ -369,14 +369,9 @@ async function plainWizard(input: WizardOptions): Promise<WizardResult> {
         signal,
       );
       if (index === presets.length) {
-        const appIndex = await plainChoice(
-          rl,
-          "Choose an application",
-          ["web", "cli", "mac", "none"],
-          signal,
+        const apps = parseApps(
+          await plainQuestion(rl, "Applications (web,cli,mac or none)", signal),
         );
-        const apps: AppId[] =
-          appIndex === 3 ? [] : [appChoices[appIndex]?.value ?? ("web" as AppId)];
         setApps(overrides, apps);
         const rust = await plainChoice(rl, "Include Rust?", ["No", "Yes"], signal);
         overrides.rust = rust === 1;
@@ -420,8 +415,16 @@ async function plainWizard(input: WizardOptions): Promise<WizardResult> {
           [...presetChoices.map((p) => p.label), "Custom combination"],
           signal,
         );
-        if (index === presets.length) setApps(overrides, []);
-        else setSelection(overrides, presets[index]?.id ?? "web");
+        if (index === presets.length) {
+          const apps = parseApps(
+            await plainQuestion(rl, "Applications (web,cli,mac or none)", signal),
+          );
+          setApps(overrides, apps);
+          const rust = await plainChoice(rl, "Include Rust?", ["No", "Yes"], signal);
+          overrides.rust = rust === 1;
+        } else {
+          setSelection(overrides, presets[index]?.id ?? "web");
+        }
       } else if (action === 2) {
         const next = await plainQuestion(rl, "Where should the repository be created?", signal);
         const name = await plainQuestion(rl, "Root package name", signal);

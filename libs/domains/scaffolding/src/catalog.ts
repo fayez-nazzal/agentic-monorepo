@@ -113,7 +113,7 @@ export const catalog: readonly CatalogDescriptor[] = [
     label: "Mac · SwiftUI",
     hint: "A native SwiftUI and SwiftPM starter for macOS utilities and products.",
     status: "available",
-    sourcePaths: ["apps/mac/example-app"],
+    sourcePaths: ["apps/mac/example-app", ".swift-format", ".swiftlint.yml", "tools/swiftlint.sh"],
     requires: ["mac-filesystem"],
     projectNames: ["mac-example-app"],
     nextCommands: [

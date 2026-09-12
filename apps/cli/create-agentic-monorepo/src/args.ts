@@ -61,6 +61,7 @@ export function parseCliArgs(argv: readonly string[]): CliArgs {
       name: { type: "string" },
       preset: { type: "string" },
       apps: { type: "string" },
+      config: { type: "string" },
       rust: { type: "boolean" },
       "no-rust": { type: "boolean" },
       install: { type: "boolean" },

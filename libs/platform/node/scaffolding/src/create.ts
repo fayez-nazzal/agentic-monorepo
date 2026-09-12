@@ -57,8 +57,7 @@ async function rollback(
         continue;
       const handle = await open(file.path, "r");
       const text = await handle.readFile({ encoding: "utf8" });
-      await handle.close();
-      if (digest(text) === file.digest) await unlink(file.path);
+      if (file.digest.length === 0 || digest(text) === file.digest) await unlink(file.path);
     } catch {
       // A changed or unavailable entry belongs to the user; never remove it.
     }
@@ -184,10 +183,13 @@ async function writeFileExclusive(
   try {
     handle = await open(filePath, "wx", file.mode);
     const opened = await handle.stat();
-    created.push({ path: filePath, dev: opened.dev, ino: opened.ino, digest: digest(file.text) });
+    created.push({ path: filePath, dev: opened.dev, ino: opened.ino, digest: "" });
     await handle.writeFile(file.text, "utf8");
     await handle.chmod(file.mode);
     await handle.close();
+    const index = created.length - 1;
+    const createdFile = created[index];
+    if (createdFile !== undefined) created[index] = { ...createdFile, digest: digest(file.text) };
   } catch (cause) {
     try {
       await handle?.close();
