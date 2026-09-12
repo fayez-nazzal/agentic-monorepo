@@ -10,11 +10,18 @@ if (!new Set(["portable", "native"]).has(mode))
   throw new Error("--mode must be portable or native");
 const temp = await mkdtemp(join(tmpdir(), "agentic-monorepo-smoke-"));
 const run = (command, args, cwd = root) => {
-  const result = spawnSync(command, args, {
+  let executable = command;
+  let commandArgs = args;
+  if (process.platform === "win32") {
+    const quote = (value) => `"${value.replaceAll('"', '\\"')}"`;
+    executable = process.env["ComSpec"] ?? "cmd.exe";
+    commandArgs = ["/d", "/s", "/c", [command, ...args].map(quote).join(" ")];
+  }
+  const result = spawnSync(executable, commandArgs, {
     cwd,
     stdio: "inherit",
-    ...(process.platform === "win32" ? { shell: true } : {}),
   });
+  if (result.error) throw result.error;
   if (result.status !== 0) throw new Error(`${command} exited ${result.status}`);
 };
 try {
