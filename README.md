@@ -44,7 +44,6 @@ node apps/cli/create-agentic-monorepo/dist/package/dist/main.mjs ../my-product -
 ```sh
 cd ../my-product
 pnpm install --frozen-lockfile
-pnpm nx run web-example-app:build
 pnpm nx run web-example-app:dev
 ```
 
@@ -171,7 +170,7 @@ The examples exist to be replaced. To make the repository yours:
 | Explore the project graph       | `pnpm nx graph`                                 |
 | Run a single target             | `pnpm nx run <project>:<target>`                |
 
-Each project README lists its own targets. Nx runs upstream builds before `typecheck`, `test`, `lint`, and `build`, and caches those TypeScript tasks; Swift and Rust builds are left to their own toolchains. Development servers are not build-gated, so run an app's `build` before its `dev` or `start` target the first time.
+Each project README lists its own targets. Nx runs upstream builds before `typecheck`, `test`, `lint`, and `build`, and caches those TypeScript tasks; Swift and Rust builds are left to their own toolchains. Development targets are also build-gated through root `targetDefaults`: `dev` and `serve` build upstream dependencies, while `preview`, `start`, and `run` build the project first.
 
 ## Toolchain
 

@@ -153,23 +153,25 @@ function renderLockfile(text: string, options: ResolvedOptions, variant?: string
 
 function renderNx(text: string): string {
   const nx = parseJson(text, "nx.json");
-  nx.analytics = false;
-  return `${JSON.stringify(nx, null, 2)}\n`;
+  if (typeof nx.analytics !== "boolean")
+    throw invalid('Template member nx.json["analytics"] must be a boolean');
+  const match = text.match(/("analytics"\s*:\s*)(true|false)/);
+  if (match === null || match.index === undefined)
+    throw invalid('Template nx.json is missing the "analytics" key');
+  const rendered = `${text.slice(0, match.index)}${match[1]}false${text.slice(match.index + match[0].length)}`;
+  return rendered.endsWith("\n") ? rendered : `${rendered}\n`;
 }
 
 function renderConfig(options: ResolvedOptions, template: TemplateSnapshot): string {
-  return `${JSON.stringify(
-    {
-      schemaVersion: 1,
-      name: options.name,
-      apps: [...options.apps],
-      rust: options.rust,
-      templateVersion: template.creatorVersion,
-      templateDigest: template.digest,
-    },
-    null,
-    2,
-  )}\n`;
+  return `{
+  "schemaVersion": 1,
+  "name": ${JSON.stringify(options.name)},
+  "apps": [${options.apps.map((app) => JSON.stringify(app)).join(", ")}],
+  "rust": ${JSON.stringify(options.rust)},
+  "templateVersion": ${JSON.stringify(template.creatorVersion)},
+  "templateDigest": ${JSON.stringify(template.digest)}
+}
+`;
 }
 
 function renderReadme(options: ResolvedOptions, template: TemplateSnapshot): string {
@@ -185,7 +187,16 @@ function renderReadme(options: ResolvedOptions, template: TemplateSnapshot): str
     options.apps.length === 0
       ? "pnpm nx run-many -t typecheck build test lint"
       : options.apps.map((app) => `pnpm nx run ${app}-example-app:build`).join("\n");
-  return `# ${options.name}\n\nThis repository contains ${selected}, generated from Agentic Monorepo (template ${template.creatorVersion}). Examples are intentionally small and should be replaced with your product's real domains.\n\n## Included projects\n\n${appLines}\n${options.rust ? "- libs/rust/search-index (independent Rust library)\n" : ""}\n## Checks\n\n\`\`\`sh\n${buildLines}\npnpm nx run-many -t typecheck build test lint\npnpm format:check\n\`\`\`\n\nReplay this selection with npx create-agentic-monorepo ${options.name} --config ./agentic.config.json. The generated examples use the shared search domain where applicable; Rust is independent and is not wired into an application.\n`;
+  const developCommands: Record<string, string> = {
+    web: "pnpm nx run web-example-app:dev",
+    cli: "pnpm nx run cli-example-app:start -- demo",
+    mac: "pnpm nx run mac-example-app:run",
+  };
+  const developSection =
+    options.apps.length === 0
+      ? ""
+      : `## Develop\n\n\`\`\`sh\n${options.apps.map((app) => developCommands[app]).join("\n")}\n\`\`\`\n\nIf you change a library, rebuild it before the running development server picks it up.\n\n`;
+  return `# ${options.name}\n\nThis repository contains ${selected}, generated from Agentic Monorepo (template ${template.creatorVersion}). Examples are intentionally small and should be replaced with your product's real domains.\n\n## Included projects\n\n${appLines}\n${options.rust ? "- libs/rust/search-index (independent Rust library)\n" : ""}\n${developSection}## Checks\n\n\`\`\`sh\n${buildLines}\npnpm nx run-many -t typecheck build test lint\npnpm format:check\n\`\`\`\n\nReplay this selection with npx create-agentic-monorepo ${options.name} --config ./agentic.config.json. The generated examples use the shared search domain where applicable; Rust is independent and is not wired into an application.\n`;
 }
 
 function renderWorkflow(options: ResolvedOptions): string {
