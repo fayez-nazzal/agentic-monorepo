@@ -1,0 +1,20 @@
+{
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "name": "create-agentic-monorepo",
+  "projectType": "application",
+  "tags": ["type:app", "platform:cli", "lang:ts"],
+  "targets": {
+    "build": {
+      "inputs": [
+        "default",
+        "^default",
+        "{workspaceRoot}/libs/domains/scaffolding/**/*",
+        "{workspaceRoot}/libs/platform/node/scaffolding/**/*",
+        "{workspaceRoot}/package.json",
+        "{workspaceRoot}/pnpm-lock.yaml",
+        "{projectRoot}/scripts/package.mjs"
+      ],
+      "outputs": ["{projectRoot}/dist"]
+    }
+  }
+}

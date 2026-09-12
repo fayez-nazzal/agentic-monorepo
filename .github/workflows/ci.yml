@@ -6,19 +6,63 @@ on:
   pull_request:
 
 jobs:
+  creator-smoke:
+    name: creator-smoke (${{ matrix.os }}, Node ${{ matrix.node }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-latest, node: "22.13.0" }
+          - { os: windows-latest, node: "22.13.0" }
+          - { os: macos-latest, node: "22.13.0" }
+          - { os: ubuntu-latest, node: "24.x" }
+    steps:
+      - id: checkout
+        uses: actions/checkout@v4
+      - id: setup-pnpm
+        uses: pnpm/action-setup@v4
+      - id: setup-node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: pnpm
+      - id: install-dependencies
+        run: pnpm install --frozen-lockfile
+      - id: build-creator
+        run: pnpm --dir apps/cli/create-agentic-monorepo build
+      - id: smoke-creator
+        run: node tools/smoke-create-agentic-monorepo.mjs --mode portable
+
   verify:
+    needs: creator-smoke
+    if: ${{ always() }}
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - id: creator-smoke-gate
+        run: test "${{ needs.creator-smoke.result }}" = success
+      - id: checkout
+        uses: actions/checkout@v4
+      - id: setup-pnpm
+        uses: pnpm/action-setup@v4
+      - id: setup-node
+        uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 22.13.0
           cache: pnpm
-      - run: brew install swiftlint
-      - run: rustup toolchain uninstall 1.97.1 1.97.1-aarch64-apple-darwin || true
-      - run: rm -rf "$HOME/.rustup/toolchains/1.97.1-aarch64-apple-darwin"
-      - run: rustup toolchain install 1.97.1 --profile minimal --component clippy --component rustfmt
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm nx run-many -t typecheck build test lint
-      - run: pnpm format:check
+      - id: setup-swiftlint
+        run: brew install swiftlint
+      - id: reset-rust
+        run: rustup toolchain uninstall 1.97.1 1.97.1-aarch64-apple-darwin || true
+      - id: repair-rust-cache
+        run: rm -rf "$HOME/.rustup/toolchains/1.97.1-aarch64-apple-darwin"
+      - id: setup-rust
+        run: rustup toolchain install 1.97.1 --profile minimal --component clippy --component rustfmt
+      - id: install-dependencies
+        run: pnpm install --frozen-lockfile
+      - id: verify-workspace
+        run: pnpm nx run-many -t typecheck build test lint
+      - id: check-format
+        run: pnpm format:check
+      - id: smoke-generated-native
+        run: node tools/smoke-create-agentic-monorepo.mjs --mode native

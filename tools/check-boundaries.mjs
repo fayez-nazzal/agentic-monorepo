@@ -1,8 +1,9 @@
-/* eslint-disable curly, init-declarations, max-depth, max-lines-per-function, max-statements, no-array-sort, no-continue */
-import { execFileSync } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+
+/* eslint-disable curly, init-declarations, max-depth, max-lines-per-function, max-statements, no-array-sort, no-continue */
+import crossSpawn from "cross-spawn";
 
 const failureExitCode = 1;
 const typeTags = new Set([
@@ -33,7 +34,23 @@ function loadGraph() {
   const tempDir = mkdtempSync(join(tmpdir(), "boundaries-graph-"));
   const graphFile = join(tempDir, "graph.json");
   try {
-    execFileSync("pnpm", ["exec", "nx", "graph", `--file=${graphFile}`], { stdio: "pipe" });
+    const result = crossSpawn.sync("pnpm", ["exec", "nx", "graph", `--file=${graphFile}`], {
+      stdio: "pipe",
+      encoding: "utf8",
+    });
+    if (result.error) {
+      throw result.error;
+    }
+    if (result.status !== 0 || result.signal) {
+      const diagnostics = [result.stdout, result.stderr].filter(Boolean).join("\n");
+      let status = String(result.status);
+      if (result.status === null) status = "null";
+      let signal = "";
+      if (result.signal !== null) signal = `, signal=${result.signal}`;
+      let detail = "";
+      if (diagnostics.length > 0) detail = `\n${diagnostics}`;
+      throw new Error(`Unable to load Nx graph (status=${status}${signal})${detail}`);
+    }
     return JSON.parse(readFileSync(graphFile, "utf8")).graph;
   } finally {
     rmSync(tempDir, { recursive: true, force: true });

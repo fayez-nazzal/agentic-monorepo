@@ -1,0 +1,37 @@
+{
+  "name": "create-agentic-monorepo",
+  "version": "0.1.0",
+  "private": false,
+  "license": "MIT",
+  "type": "module",
+  "publishConfig": {
+    "access": "public",
+    "directory": "dist/package",
+    "linkDirectory": false
+  },
+  "scripts": {
+    "build": "tsdown && node scripts/package.mjs",
+    "typecheck": "tsc",
+    "start": "node dist/package/dist/main.mjs",
+    "test": "vitest run",
+    "lint": "oxlint --config ../../../.oxlintrc.json ."
+  },
+  "dependencies": {
+    "@clack/prompts": "1.7.0",
+    "@domains/scaffolding": "workspace:*",
+    "@platform/node-scaffolding": "workspace:*",
+    "cross-spawn": "7.0.6",
+    "picocolors": "1.1.1",
+    "yaml": "2.9.0"
+  },
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "nx": {
+    "tags": [
+      "type:app",
+      "platform:cli",
+      "lang:ts"
+    ]
+  }
+}
