@@ -70,3 +70,5 @@ jobs:
         run: pnpm format:check
       - id: smoke-generated-native
         run: node tools/smoke-create-agentic-monorepo.mjs --mode native
+      - id: smoke-generated-dev
+        run: node tools/smoke-create-agentic-monorepo.mjs --mode dev

@@ -24,6 +24,29 @@
       "dependsOn": ["^build"],
       "cache": true,
       "inputs": ["default", "{workspaceRoot}/.oxlintrc.json"]
+    },
+    "dev": {
+      "dependsOn": ["^build"],
+      "cache": false,
+      "continuous": true
+    },
+    "serve": {
+      "dependsOn": ["^build"],
+      "cache": false,
+      "continuous": true
+    },
+    "preview": {
+      "dependsOn": ["build"],
+      "cache": false,
+      "continuous": true
+    },
+    "start": {
+      "dependsOn": ["build"],
+      "cache": false
+    },
+    "run": {
+      "dependsOn": ["build"],
+      "cache": false
     }
   },
   "analytics": true

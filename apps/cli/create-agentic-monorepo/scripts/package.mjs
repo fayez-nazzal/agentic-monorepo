@@ -75,17 +75,20 @@ const dependencies = Object.fromEntries(external.map((name) => [name, creator.de
 const manifest = {
   name: creator.name,
   version: creator.version,
-  description: "Create an Agentic Monorepo starter repository.",
+  description: creator.description,
   type: "module",
   license: creator.license,
   engines: creator.engines,
-  repository: { type: "git", url: "git+https://github.com/fayez-nazzal/agentic-monorepo.git" },
+  repository: creator.repository,
+  homepage: creator.homepage,
+  bugs: creator.bugs,
   bin: { "create-agentic-monorepo": "dist/main.mjs" },
-  files: ["dist", "template.json", "LICENSE"],
+  files: ["dist", "template.json", "LICENSE", "README.md"],
   dependencies,
   publishConfig: { access: "public" },
 };
 await writeFile(join(out, "package.json"), `${JSON.stringify(manifest, null, 2)}\n`);
 await writeFile(join(out, "template.json"), `${JSON.stringify(snapshot)}\n`);
 await writeFile(join(out, "LICENSE"), await readFile(join(root, "LICENSE")));
+await writeFile(join(out, "README.md"), await readFile(join(root, "README.md")));
 console.log(`Packaged ${files.length} template files (${digest})`);

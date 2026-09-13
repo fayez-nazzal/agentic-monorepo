@@ -60,6 +60,7 @@ These principles govern every configurable tool in this repo. Apply them to any 
 - SwiftPM in Swift 6.1 has no safe warnings as errors setting. Swift strictness comes from Swift 6 language mode plus upcoming feature flags in each `Package.swift`.
 - Swift lint uses `swift format lint --strict` from the bundled toolchain. It is compile free and shares the root `.swift-format` config across apps and libs. `unsafeFlags` and build plugins were rejected. The first breaks package consumption and the second slows every build.
 - Shared logic across languages lives in a pure Rust core. Each language reaches it through a thin binding crate tagged `type:binding`, `lang:rust`, and exactly one of `binding:node` or `binding:swift`.
+- Runtime targets `dev`, `serve`, `preview`, `start`, and `run` are gated on builds through root `targetDefaults`, so a development server never starts against unbuilt workspace dependencies.
 - Node bindings use `lang:ts` consumers; Swift bindings use `lang:swift` consumers. Bindings are the only language-crossing edge.
 - Pure Rust cores must remain FFI-free across normal, build, dev, and target-specific dependency tables. FFI crates such as `napi*` and `uniffi*` belong in bindings.
 - Bundled-dependency metadata is intentionally out of scope; this checker enforces declared manifest dependencies only.
