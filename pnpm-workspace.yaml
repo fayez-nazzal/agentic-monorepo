@@ -5,3 +5,7 @@ packages:
 allowBuilds:
   nx: true
 minimumReleaseAge: 2880
+overrides:
+  # nx pins smol-toml 1.6.1, which is vulnerable to CVE-2026-85730 (GHSA-7w5x-hrqm-74c2).
+  # Drop this once nx depends on 1.7.1 or newer.
+  smol-toml: 1.7.2
