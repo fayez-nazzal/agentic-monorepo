@@ -10,7 +10,7 @@
   "devDependencies": {
     "@types/node": "26.5.1",
     "cross-spawn": "7.0.6",
-    "nx": "23.2.0",
+    "nx": "23.2.1",
     "oxfmt": "0.67.0",
     "oxlint": "1.81.0",
     "oxlint-tsgolint": "7.0.2001",
@@ -18,7 +18,7 @@
     "typescript": "7.0.2",
     "unrun": "0.3.1",
     "vite": "8.2.2",
-    "vitest": "4.1.11"
+    "vitest": "5.0.0"
   },
   "engines": {
     "node": ">=22.13.0"
