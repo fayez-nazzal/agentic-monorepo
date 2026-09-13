@@ -11,24 +11,18 @@ Use `create-agentic-monorepo` to generate a new repository with only the starter
 
 ## Quick start
 
-> [!NOTE]
-> `create-agentic-monorepo` is not on npm yet. Build it from this repository as shown below, and read `create-agentic-monorepo` in later examples as `node apps/cli/create-agentic-monorepo/dist/package/dist/main.mjs`.
-
 You need [Node.js](https://nodejs.org) 22.13 or newer and [pnpm](https://pnpm.io/installation) 11.21.0. The web and CLI starters need nothing else and work on macOS, Linux, and Windows.
 
-### 1. Build the CLI
+### 1. Create your repository
 
 ```sh
-git clone https://github.com/fayez-nazzal/agentic-monorepo.git
-cd agentic-monorepo
-pnpm install --frozen-lockfile
-pnpm nx run create-agentic-monorepo:build
+npx create-agentic-monorepo@latest my-product
 ```
 
-### 2. Create your repository
+Alternatively:
 
 ```sh
-node apps/cli/create-agentic-monorepo/dist/package/dist/main.mjs ../my-product
+pnpm create agentic-monorepo@latest my-product
 ```
 
 The wizard asks for the location, the starter, and whether to install dependencies and initialize Git, then shows exactly what it will do before writing a single file. The destination must be a new or empty directory, and nothing is ever overwritten.
@@ -36,32 +30,23 @@ The wizard asks for the location, the starter, and whether to install dependenci
 Already know what you want? Skip the questions:
 
 ```sh
-node apps/cli/create-agentic-monorepo/dist/package/dist/main.mjs ../my-product --preset web --yes
+npx --yes create-agentic-monorepo@latest my-product --preset web --yes
 ```
 
-### 3. Start developing
+### 2. Start developing
 
 ```sh
-cd ../my-product
+cd my-product
 pnpm install --frozen-lockfile
-pnpm nx run web-example-app:build
 pnpm nx run web-example-app:dev
 ```
 
 Vite prints a local URL. Open it and you will see the example app rendering results from the shared search domain. Replace that domain with your own and keep building.
 
+Node >=22.13 runs the creator. Generated-workspace installs need pnpm 11.21.0.
+
 > [!TIP]
 > `--list` shows every starter, `--dry-run` prints the plan without creating anything, and `--install --git` lets the CLI run `pnpm install --frozen-lockfile` and `git init` for you.
-
-<details>
-<summary>Once the package is published to npm</summary>
-
-```sh
-pnpm create agentic-monorepo my-product
-npx create-agentic-monorepo my-product --preset web --yes
-```
-
-</details>
 
 ## Choose a starter
 
@@ -108,10 +93,10 @@ React, Next.js, Vue, SvelteKit, Astro, Node API, iOS, Android, Expo, Electron, T
 Every generated repository contains an `agentic.config.json` recording the resolved name, the selected apps, the Rust choice, and the template version and digest it came from. Feed it back to reproduce the same repository:
 
 ```sh
-create-agentic-monorepo my-other-product --config ./agentic.config.json
+npx create-agentic-monorepo@latest my-other-product --config ./agentic.config.json
 ```
 
-Explicit flags win over the file, and a recorded version or digest that no longer matches stops the run instead of quietly generating something different. Dependency installation and Git setup are not recorded, so add `--install` or `--git` when you want them.
+Explicit flags win over the file, and a recorded version or digest that no longer matches stops the run instead of quietly generating something different. When replaying an older template, replace `latest` with the config's `templateVersion`. Dependency installation and Git setup are not recorded, so add `--install` or `--git` when you want them.
 
 ## Architecture
 
@@ -171,7 +156,7 @@ The examples exist to be replaced. To make the repository yours:
 | Explore the project graph       | `pnpm nx graph`                                 |
 | Run a single target             | `pnpm nx run <project>:<target>`                |
 
-Each project README lists its own targets. Nx runs upstream builds before `typecheck`, `test`, `lint`, and `build`, and caches those TypeScript tasks; Swift and Rust builds are left to their own toolchains. Development servers are not build-gated, so run an app's `build` before its `dev` or `start` target the first time.
+Each project README lists its own targets. Nx runs upstream builds before `typecheck`, `test`, `lint`, and `build`, and caches those TypeScript tasks; Swift and Rust builds are left to their own toolchains. Development targets are also build-gated through root `targetDefaults`: `dev` and `serve` build upstream dependencies, while `preview`, `start`, and `run` build the project first.
 
 ## Toolchain
 
@@ -189,13 +174,37 @@ JavaScript dependencies are pinned to exact versions, and `minimumReleaseAge: 28
 
 ## Working on this repository
 
+For an unreleased local CLI, clone and build the repository, then invoke the staged entry point:
+
+```sh
+git clone https://github.com/fayez-nazzal/agentic-monorepo.git
+cd agentic-monorepo
+pnpm install --frozen-lockfile
+pnpm nx run create-agentic-monorepo:build
+node apps/cli/create-agentic-monorepo/dist/package/dist/main.mjs ../my-product
+```
+
+These are the commands CI runs on macOS:
+
 ```sh
 pnpm install --frozen-lockfile
 pnpm nx run-many -t typecheck build test lint
 pnpm format:check
 ```
 
-These are the commands CI runs on macOS. The full sweep includes the Swift and Rust projects, so it needs macOS 14 or newer with Swift 6 and SwiftLint plus the pinned Rust 1.97.1 toolchain; the web and CLI projects alone need only Node and pnpm. CI also packs the CLI and creates a repository from the packed artifact on Ubuntu, Windows, and macOS. Read the [architecture guide](docs/architecture.md) before adding a project.
+The full sweep includes the Swift and Rust projects, so it needs macOS 14 or newer with Swift 6 and SwiftLint plus the pinned Rust 1.97.1 toolchain; the web and CLI projects alone need only Node and pnpm. CI also packs the CLI and creates a repository from the packed artifact on Ubuntu, Windows, and macOS. Read the [architecture guide](docs/architecture.md) before adding a project.
+
+### Publishing the CLI
+
+Bootstrap publication requires npm authentication:
+
+1. Run `npm login --registry=https://registry.npmjs.org` and complete any browser or MFA challenge.
+2. From the repository root, build the staged package with the contributor commands above.
+3. Publish the tested directory: `npm publish ./apps/cli/create-agentic-monorepo/dist/package --access public --tag latest --registry=https://registry.npmjs.org`.
+4. In npm package Settings → Trusted publishing, add GitHub Actions for organization/user `fayez-nazzal`, repository `agentic-monorepo`, workflow filename `publish-create-agentic-monorepo.yml`, with no environment restriction. Allow direct `npm publish`, not only the default stage operation.
+5. Verify the package with `npm view create-agentic-monorepo version --registry=https://registry.npmjs.org`.
+
+For future releases, change only the creator's source version, merge with passing CI, then publish a stable GitHub Release tagged `create-agentic-monorepo-v<version>` at that commit. The workflow checks the tag and publishes to `latest` with npm trusted publishing.
 
 ## License
 
