@@ -68,7 +68,7 @@ function checkSignal(signal: AbortSignal): void {
 
 function checked<T>(value: T | symbol): T {
   if (isCancel(value)) cancelled();
-  return value;
+  return value as T;
 }
 
 function currentSelection(config: CreatorConfig, overrides: MutableOverrides): boolean {
