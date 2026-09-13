@@ -2,15 +2,15 @@
   "name": "create-agentic-monorepo",
   "version": "0.1.0",
   "private": false,
-  "license": "MIT",
   "description": "Create an Agentic Monorepo starter repository.",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/fayez-nazzal/agentic-monorepo.git"
-  },
   "homepage": "https://github.com/fayez-nazzal/agentic-monorepo#readme",
   "bugs": {
     "url": "https://github.com/fayez-nazzal/agentic-monorepo/issues"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fayez-nazzal/agentic-monorepo.git"
   },
   "type": "module",
   "publishConfig": {

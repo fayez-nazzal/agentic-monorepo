@@ -1,9 +1,9 @@
 /* eslint-disable */
 import { spawn, spawnSync } from "node:child_process";
-import { parseArgs } from "node:util";
 import { mkdir, mkdtemp, readFile, readdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
+import { parseArgs } from "node:util";
 
 import crossSpawn from "cross-spawn";
 
@@ -18,8 +18,7 @@ const { values } = parseArgs({
 const mode = values.mode;
 if (!new Set(["portable", "native", "dev"]).has(mode))
   throw new Error("--mode must be portable, native, or dev");
-if (values.package === "")
-  throw new Error("--package must not be empty");
+if (values.package === "") throw new Error("--package must not be empty");
 const temp = await mkdtemp(join(tmpdir(), "agentic-monorepo-smoke-"));
 const run = (command, args, cwd = root) => {
   const result = crossSpawn.sync(command, args, { cwd, stdio: "inherit" });
