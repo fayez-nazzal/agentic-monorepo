@@ -104,7 +104,8 @@ async function runDevSmoke(destination) {
       child.once("error", (error) => finish(reject, error));
       child.stdout.on("data", (chunk) => {
         output += chunk.toString();
-        const match = output.match(/Local:\s+(http:\/\/[^\s]+)/);
+        const plainOutput = output.replace(/\u001b\[[0-?]*[ -/]*[@-~]/g, "");
+        const match = plainOutput.match(/Local:\s+(http:\/\/[^\s]+)/);
         if (match) finish(resolveUrl, match[1]);
       });
     });
