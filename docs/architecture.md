@@ -47,6 +47,8 @@ A `type:domain` project declares the business concepts it owns in the `nx` field
 
 `node tools/check-boundaries.mjs --preflight <plan.json>` evaluates a proposed change before any code is written. The plan lists `add-domain`, `add-app`, and `add-concept` entries, each with `project`, `tags`, and `concepts`; every entry is checked against the current registry and the entries before it. The mode writes nothing, prints one `LEGAL` or `BLOCKED` verdict per entry, and exits 0 only when every entry is legal.
 
+`pnpm preflight:tui` opens an interactive planner over the same rules. It loads an existing plan or starts a fresh `plan.json`, edits the ordered change list, validates to get the identical `LEGAL`/`BLOCKED` verdicts, and writes only the plan file, only on the explicit `save` command. Project manifests are never touched. Every rule decision is delegated to `tools/check-boundaries.mjs`; the planner owns no rules of its own. `node tools/preflight-tui.mjs --smoke` runs its non-interactive self-check, which CI runs after `architecture:acceptance`.
+
 ## Tool rules
 
 These principles govern every configurable tool in this repo. Apply them to any tool added later.

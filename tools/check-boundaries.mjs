@@ -605,10 +605,14 @@ function reportViolations(violations, projectCount) {
   }
 }
 
-function preflightMode(planPath) {
+function runPreflight(planPath) {
   const changes = parsePlan(planPath);
   const graph = loadGraph();
-  const verdicts = evaluatePreflight(changes, conceptDeclarations(graph));
+  return evaluatePreflight(changes, conceptDeclarations(graph));
+}
+
+function preflightMode(planPath) {
+  const verdicts = runPreflight(planPath);
   for (const verdict of verdicts) console.log(formatVerdict(verdict));
   if (verdicts.some((verdict) => verdict.status === "blocked")) {
     process.exitCode = failureExitCode;
@@ -636,4 +640,11 @@ if (isEntryScript()) {
   main(process.argv.slice(2));
 }
 
-export { evaluatePreflight, formatVerdict, parsePlan, readConceptDeclaration, registryViolations };
+export {
+  evaluatePreflight,
+  formatVerdict,
+  parsePlan,
+  readConceptDeclaration,
+  registryViolations,
+  runPreflight,
+};
