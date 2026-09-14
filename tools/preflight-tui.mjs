@@ -14,12 +14,12 @@
 // The JSON API uses null as its standard no-replacer argument.
 /* eslint-disable max-lines, no-await-in-loop, unicorn/no-null */
 
-import { existsSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { createInterface } from "node:readline";
 
-import { formatVerdict, parsePlan, runPreflight } from "./check-boundaries.mjs";
+import { evaluatePreflight, formatVerdict, parsePlan, runPreflight } from "./check-boundaries.mjs";
 
 const actions = ["add-domain", "add-app", "add-concept"];
 const usage = "[a]dd [e]dit N [d]elete N [m]ove N up|down [v]alidate [s]ave [q]uit";
@@ -295,9 +295,16 @@ function validate(session) {
 }
 
 function savePlan(session) {
-  writeFileSync(session.planPath, planFileText(session.changes));
+  try {
+    mkdirSync(dirname(session.planPath), { recursive: true });
+    writeFileSync(session.planPath, planFileText(session.changes));
+  } catch (error) {
+    console.log(`  save failed: ${error.message}`);
+    return false;
+  }
   session.dirty = false;
   console.log(`  saved ${session.changes.length} changes to ${session.planPath}`);
+  return true;
 }
 
 function deleteCommand(session, indexToken) {
@@ -352,9 +359,9 @@ async function quitFlow(rl, session) {
   const answer = await ask(rl, "unsaved changes — [s]ave, [q]uit discards, anything else stays: ");
   const choice = answer.trim();
   if (choice === "s") {
-    savePlan(session);
+    return savePlan(session);
   }
-  return choice === "s" || choice === "q";
+  return choice === "q";
 }
 
 async function repl(rl, session) {
@@ -424,9 +431,8 @@ async function interactiveMain(rl) {
   }
 }
 
-// Deterministic CI self-check. The tui-smoke- project names are reserved for
-// This fixture: if the real registry ever grows one of them, the status
-// Mismatch below fails the smoke run loudly instead of passing silently.
+// Deterministic CI self-check. It evaluates against its own empty declaration
+// fixture, so changes to the real registry cannot alter expected statuses.
 const smokePlan = {
   changes: [
     {
@@ -450,6 +456,7 @@ const smokePlan = {
   ],
   expectedStatuses: ["legal", "legal", "blocked", "blocked"],
 };
+const smokeDeclarations = [];
 
 function reportSmokeStatuses(verdicts, expected) {
   const observed = verdicts.map((verdict) => verdict.status);
@@ -464,11 +471,11 @@ function reportSmokeStatuses(verdicts, expected) {
 }
 
 function runSmoke() {
-  console.log("preflight-tui smoke: validating the demo plan against the real registry");
+  console.log("preflight-tui smoke: validating an isolated demo plan");
   const tempPath = writeTempPlan(smokePlan.changes);
   let verdicts = [];
   try {
-    verdicts = runPreflight(tempPath);
+    verdicts = evaluatePreflight(parsePlan(tempPath), smokeDeclarations);
   } finally {
     rmSync(dirname(tempPath), { recursive: true, force: true });
   }
