@@ -61,7 +61,7 @@ The checker blocks missing or ambiguous projects, tags, claims, and duplicate ta
 
 ## Architecture pre-flight procedure
 
-Agents must run pre-flight before writing a new domain or app manifest, adding concepts, or changing concept ownership. Create an ordered `plan.json` containing `add-domain`, `add-app`, `add-concept`, or `transfer-concept` entries, then run:
+Agents must run pre-flight before writing a new domain or app manifest, adding concepts, changing concept ownership, or adding a dependency edge. Create an ordered `plan.json` containing `add-domain`, `add-app`, `add-concept`, `transfer-concept`, or `add-dependency` entries, then run:
 
 ```sh
 node tools/check-boundaries.mjs --preflight plan.json

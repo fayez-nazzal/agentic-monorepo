@@ -415,10 +415,21 @@ function validate(session) {
   }
 }
 
+function validatedPlanText(changes) {
+  const tempPath = writeTempPlan(changes);
+  try {
+    parsePlan(tempPath);
+    return planFileText(changes);
+  } finally {
+    rmSync(dirname(tempPath), { recursive: true, force: true });
+  }
+}
+
 function savePlan(session) {
   try {
+    const text = validatedPlanText(session.changes);
     mkdirSync(dirname(session.planPath), { recursive: true });
-    writeFileSync(session.planPath, planFileText(session.changes));
+    writeFileSync(session.planPath, text);
   } catch (error) {
     console.log(`  save failed: ${error.message}`);
     return false;

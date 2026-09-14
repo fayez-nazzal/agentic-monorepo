@@ -323,11 +323,24 @@ function readConceptDeclaration(manifestPath) {
   return [{ name: manifest.name, tags: manifestTags(nxField), concepts: conceptNamesOf(nxField) }];
 }
 
+function projectDeclaration(node) {
+  const packageDeclarations = readConceptDeclaration(join(node.data.root, "package.json"));
+  if (packageDeclarations.length > 0) return packageDeclarations;
+  let project;
+  try {
+    project = JSON.parse(readFileSync(join(node.data.root, "project.json"), "utf8"));
+  } catch {
+    return [];
+  }
+  const name = project.name ?? node.name;
+  return [{ name, tags: manifestTags({ tags: project.tags }), concepts: [] }];
+}
+
 function conceptDeclarations(graph) {
   const declarations = [];
   for (const node of Object.values(graph.nodes)) {
     if (node.data.root === ".") continue;
-    declarations.push(...readConceptDeclaration(join(node.data.root, "package.json")));
+    declarations.push(...projectDeclaration(node));
   }
   return declarations;
 }
