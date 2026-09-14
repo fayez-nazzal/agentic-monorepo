@@ -22,6 +22,8 @@ const allowed = [
   "LICENSE",
   "docs/architecture.md",
   "tools/check-boundaries.mjs",
+  "tools/architecture-acceptance.mjs",
+  "tools/preflight-tui.mjs",
   ".github/workflows/ci.yml",
   ".github/dependabot.yml",
   ".swift-format",

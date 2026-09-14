@@ -129,6 +129,8 @@ graph LR
 
 `tools/check-boundaries.mjs` reads the Nx graph and project tags, then fails the `lint` target when a dependency breaks these rules. The [architecture guide](docs/architecture.md) is the full placement and dependency reference.
 
+Before adding a project or concept, write an ordered plan and run `node tools/check-boundaries.mjs --preflight plan.json`. It prints a `LEGAL` or `BLOCKED` verdict for every entry and writes nothing; use `pnpm preflight:tui` for interactive planning. Treat `BLOCKED` as a stop and follow the minimal legal change in the diagnostic. The full procedure, including human-reviewed ownership transfers and same-name concepts across domains, is in [`docs/architecture.md`](docs/architecture.md).
+
 ## Example projects
 
 | Project                                                        | What it is                                                   |
