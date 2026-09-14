@@ -35,9 +35,10 @@ const preflightTypeTags = {
   "add-app": "type:app",
   "add-concept": "type:domain",
 };
-const preflightActions = [...Object.keys(preflightTypeTags), "transfer-concept"];
+const preflightActions = [...Object.keys(preflightTypeTags), "transfer-concept", "add-dependency"];
 
 const transferPlanKeys = new Set(["action", "project", "owner", "domain", "concept"]);
+const dependencyPlanKeys = new Set(["action", "source", "target"]);
 
 function supportedPlanActions() {
   return [...preflightActions];
@@ -423,6 +424,9 @@ function parseChange(change, index) {
   if (change.action === "transfer-concept") {
     return parseTransferChange(change, index);
   }
+  if (change.action === "add-dependency") {
+    return parseDependencyChange(change, index);
+  }
   if (typeof change.project !== "string" || change.project === "") {
     throw new Error(`change ${index} must name a project`);
   }
@@ -447,6 +451,20 @@ function parseTransferChange(change, index) {
     owner: requiredPlanString(change.owner, `change ${index} owner`),
     domain: requiredPlanString(change.domain, `change ${index} domain`),
     concept: requiredPlanString(change.concept, `change ${index} concept`),
+  };
+}
+
+function parseDependencyChange(change, index) {
+  const unexpected = Object.keys(change).find((key) => !dependencyPlanKeys.has(key));
+  if (unexpected !== undefined) {
+    throw new Error(
+      `change ${index} add-dependency does not accept ${unexpected}; use source and target`,
+    );
+  }
+  return {
+    action: "add-dependency",
+    source: requiredPlanString(change.source, `change ${index} source`),
+    target: requiredPlanString(change.target, `change ${index} target`),
   };
 }
 
@@ -496,6 +514,14 @@ function evaluatePreflight(changes, declarations) {
 }
 
 function evaluateChange(change, context) {
+  if (change.action === "add-dependency") {
+    const [blockedBy] = dependencyPlanReasons(change, context);
+    const verdict = { change, status: "legal" };
+    if (blockedBy === undefined) return verdict;
+    verdict.status = "blocked";
+    verdict.reason = blockedBy;
+    return verdict;
+  }
   const existing = context.declared.get(change.project);
   const tags = change.tags ?? existing?.tags ?? [];
   const concepts = mergedConcepts(change, existing);
@@ -508,6 +534,42 @@ function evaluateChange(change, context) {
     verdict.reason = blockedBy;
   }
   return verdict;
+}
+
+function dependencyPlanReasons(change, context) {
+  if (change.source === change.target) {
+    return [blockReason("dependency-self", "choose different source and target projects")];
+  }
+  const source = context.declared.get(change.source);
+  if (source === undefined) {
+    return [
+      blockReason(
+        "dependency-source-not-found",
+        `add ${change.source} before declaring a dependency from it`,
+        change.source,
+      ),
+    ];
+  }
+  const target = context.declared.get(change.target);
+  if (target === undefined) {
+    return [
+      blockReason(
+        "dependency-target-not-found",
+        `add ${change.target} before declaring a dependency on it`,
+        change.target,
+      ),
+    ];
+  }
+  if (dependencyViolations(change.source, source.tags, change.target, target.tags).length > 0) {
+    return [
+      blockReason(
+        "dependency-edge-not-allowed",
+        `change ${change.source} or ${change.target} tags so the dependency is permitted`,
+        change.target,
+      ),
+    ];
+  }
+  return [];
 }
 
 function mergedConcepts(change, existing) {
@@ -697,13 +759,16 @@ function applyChange(change, tags, concepts, context) {
     const target = context.declared.get(change.project);
     source.concepts = source.concepts.filter((concept) => concept !== change.concept);
     target.concepts = [...target.concepts, change.concept];
-  } else {
+  } else if (change.action !== "add-dependency") {
     context.declared.set(change.project, { tags: [...tags], concepts });
   }
   context.ownersByClaim = ownershipOf(context.declared);
 }
 
 function conceptSuffix(change) {
+  if (change.action === "add-dependency") {
+    return ` ${change.source} -> ${change.target}`;
+  }
   if (change.action === "transfer-concept") {
     return ` ${change.domain}:${change.concept} from ${change.owner}`;
   }
@@ -712,7 +777,8 @@ function conceptSuffix(change) {
 }
 
 function formatVerdict(verdict) {
-  const head = `${verdict.status.toUpperCase()} ${verdict.change.project} ${verdict.change.action}${conceptSuffix(verdict.change)}`;
+  const project = verdict.change.project ?? verdict.change.source;
+  const head = `${verdict.status.toUpperCase()} ${project} ${verdict.change.action}${conceptSuffix(verdict.change)}`;
   if (verdict.reason === undefined) return head;
   return `${head} | ${formatReason(verdict.reason)}`;
 }

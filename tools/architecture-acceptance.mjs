@@ -66,9 +66,29 @@ async function scenarioLegalGrowth(declarations, root) {
       tags: ["type:app", "platform:web", "lang:ts"],
       concepts: [],
     },
+    {
+      action: "add-dependency",
+      source: "web-clipboard",
+      target: "@domains/clipboard",
+    },
+    {
+      action: "add-dependency",
+      source: "@domains/clipboard",
+      target: "web-clipboard",
+    },
   ]);
-  const expected = ["LEGAL @domains/sync add-domain", "LEGAL web-clipboard add-app"];
-  return verdictResult(evaluatePreflight(parsePlan(planPath), declarations), expected, false);
+  const expected = [
+    "LEGAL @domains/sync add-domain",
+    "LEGAL web-clipboard add-app",
+    "LEGAL web-clipboard add-dependency web-clipboard -> @domains/clipboard",
+    "BLOCKED @domains/clipboard add-dependency @domains/clipboard -> web-clipboard | rule: dependency-edge-not-allowed | conflicts with web-clipboard | minimal legal change: change @domains/clipboard or web-clipboard tags so the dependency is permitted",
+  ];
+  return orderedVerdictResult(evaluatePreflight(parsePlan(planPath), declarations), expected, [
+    "legal",
+    "legal",
+    "legal",
+    "blocked",
+  ]);
 }
 
 async function scenarioBlockedTransfer(declarations, root) {
@@ -203,6 +223,11 @@ async function scenarioReadOnlyTui(root) {
       concepts: [],
     },
     {
+      action: "add-dependency",
+      source: "@domains/acceptance-target",
+      target: "@domains/acceptance-source",
+    },
+    {
       action: "transfer-concept",
       project: "@domains/acceptance-target",
       owner: "@domains/acceptance-source",
@@ -225,6 +250,9 @@ async function scenarioReadOnlyTui(root) {
     manifestBefore.data === manifestAfter.data && manifestBefore.mtimeMs === manifestAfter.mtimeMs;
   const verdictShown =
     tui.stdout.includes("LEGAL @domains/acceptance-source add-domain scenario") &&
+    tui.stdout.includes(
+      "LEGAL @domains/acceptance-target add-dependency @domains/acceptance-target -> @domains/acceptance-source",
+    ) &&
     tui.stdout.includes(
       "LEGAL @domains/acceptance-target transfer-concept acceptance-smoke:scenario from @domains/acceptance-source",
     );
