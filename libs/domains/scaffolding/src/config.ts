@@ -113,7 +113,7 @@ function assertName(value: unknown, code: "INVALID_ARGUMENT" | "INVALID_CONFIG")
   return value;
 }
 
-/** Validate a user-provided repository/package name. */
+/** Check a repository or package name supplied by the user. */
 export function validateName(value: unknown): string {
   return assertName(value, "INVALID_ARGUMENT");
 }
@@ -174,8 +174,8 @@ function sortApps(apps: readonly AppId[]): readonly AppId[] {
 }
 
 /**
- * Validate the complete JSON configuration shape. Unknown fields and malformed
- * values are rejected rather than being ignored or merged into defaults.
+ * Check the complete JSON configuration. Reject unknown fields and malformed
+ * values instead of ignoring them or merging them into defaults.
  */
 export function validateConfig(value: unknown): CreatorConfig {
   if (!isRecord(value)) {
@@ -361,8 +361,8 @@ function presetFor(id: PresetId): PresetDescriptorLike {
 type PresetDescriptorLike = (typeof presets)[number];
 
 /**
- * Resolve config and explicit flag overrides into one deterministic generation
- * plan. Selection flags replace, rather than merge with, config selection.
+ * Combine config and explicit flag overrides into one deterministic plan.
+ * Selection flags replace the config selection instead of merging with it.
  */
 export function resolveOptions(
   config: CreatorConfig,

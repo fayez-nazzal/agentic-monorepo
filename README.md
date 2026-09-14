@@ -3,11 +3,11 @@
 [![ci](https://github.com/fayez-nazzal/agentic-monorepo/actions/workflows/ci.yml/badge.svg)](https://github.com/fayez-nazzal/agentic-monorepo/actions/workflows/ci.yml)
 [![license](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-**A monorepo starter for TypeScript, Swift, and Rust that stays clear as it grows, with a CLI that scaffolds it in one command.**
+**A starter monorepo for TypeScript, Swift, and Rust, with a CLI that creates one in a single command.**
 
-Agentic Monorepo is an [Nx](https://nx.dev) and [pnpm](https://pnpm.io) workspace where each business domain lives in its own library behind a small public interface, architecture rules are enforced by an automated boundary check, and every project exposes the same `build`, `typecheck`, `test`, and `lint` targets. Because code is grouped by business capability instead of technical layer, a developer or an AI coding agent can work inside one domain instead of loading the whole repository.
+Agentic Monorepo is an [Nx](https://nx.dev) and [pnpm](https://pnpm.io) workspace. Each business domain has its own library and small public interface. An automated boundary check enforces the architecture, and every project provides the same `build`, `typecheck`, `test`, and `lint` targets. Grouping code by business capability instead of technical layer lets a developer or AI coding agent work in one domain without loading the whole repository.
 
-Use `create-agentic-monorepo` to generate a new repository with only the starters you pick: a web app, a Node CLI, a native macOS app, an independent Rust library, or nothing but the workspace itself.
+Use `create-agentic-monorepo` to create a repository with only the starters you choose: a web app, a Node CLI, a native macOS app, an independent Rust library, or the workspace alone.
 
 ## Quick start
 
@@ -25,7 +25,7 @@ Alternatively:
 pnpm create agentic-monorepo@latest my-product
 ```
 
-The wizard asks for the location, the starter, and whether to install dependencies and initialize Git, then shows exactly what it will do before writing a single file. The destination must be a new or empty directory, and nothing is ever overwritten.
+The wizard asks where to create the repository, which starter to use, and whether to install dependencies and initialize Git. It shows exactly what it will do before writing any file. The destination must be a new or empty directory, and it never overwrites files.
 
 Already know what you want? Skip the questions:
 
@@ -41,7 +41,7 @@ pnpm install --frozen-lockfile
 pnpm nx run web-example-app:dev
 ```
 
-Vite prints a local URL. Open it and you will see the example app rendering results from the shared search domain. Replace that domain with your own and keep building.
+Vite prints a local URL. Open it to see the example app display results from the shared search domain. Replace that domain with your own and continue building.
 
 Node >=22.13 runs the creator. Generated-workspace installs need pnpm 11.21.0.
 
@@ -59,14 +59,14 @@ Node >=22.13 runs the creator. Generated-workspace installs need pnpm 11.21.0.
 | `full`      | All three apps plus the independent `libs/rust/search-index`                    | macOS 14+, Swift 6, SwiftLint, Rust 1.97.1 |
 | `workspace` | Workspace tooling, configuration, CI, and architecture docs, with no app yet    | —                                          |
 
-Every starter includes the pinned toolchain, the boundary check, and a CI workflow matched to your selection. Build your own mix with `--apps web,cli,mac` (or `--apps none`) plus `--rust`, for example `--apps cli --rust`.
+Every starter includes the pinned toolchain, the boundary check, and a CI workflow chosen for your selection. Build your own combination with `--apps web,cli,mac` (or `--apps none`) and `--rust`; for example, `--apps cli --rust`.
 
-The Rust library is deliberately independent: it is a standalone crate, not a binding wired into an app.
+The Rust library is independent by design: it is a standalone crate, not a binding connected to an app.
 
 <details>
 <summary>Starters that are listed but not available yet</summary>
 
-React, Next.js, Vue, SvelteKit, Astro, Node API, iOS, Android, Expo, Electron, Tauri, and Rust application bindings appear in `--list` as **Coming soon**. No starter exists for them yet, so the CLI rejects them instead of generating something that does not work.
+React, Next.js, Vue, SvelteKit, Astro, Node API, iOS, Android, Expo, Electron, Tauri, and Rust application bindings appear in `--list` as **Coming soon**. They are not available yet, so the CLI rejects them instead of generating a broken project.
 
 </details>
 
@@ -90,17 +90,17 @@ React, Next.js, Vue, SvelteKit, Astro, Node API, iOS, Android, Expo, Electron, T
 
 ## Repeat a setup
 
-Every generated repository contains an `agentic.config.json` recording the resolved name, the selected apps, the Rust choice, and the template version and digest it came from. Feed it back to reproduce the same repository:
+Every generated repository contains an `agentic.config.json` with the resolved name, selected apps, Rust choice, and the template version and digest used to create it. Feed this file back to reproduce the same repository:
 
 ```sh
 npx create-agentic-monorepo@latest my-other-product --config ./agentic.config.json
 ```
 
-Explicit flags win over the file, and a recorded version or digest that no longer matches stops the run instead of quietly generating something different. When replaying an older template, replace `latest` with the config's `templateVersion`. Dependency installation and Git setup are not recorded, so add `--install` or `--git` when you want them.
+Explicit flags take precedence over the file. If its recorded version or digest no longer matches, the command stops instead of quietly generating something different. When replaying an older template, replace `latest` with the config's `templateVersion`. Dependency installation and Git setup are not recorded, so add `--install` or `--git` when you want them.
 
 ## Architecture
 
-Folders follow the business, not the framework.
+Folders follow the business area, not the framework.
 
 | Purpose                          | Location                                                |
 | -------------------------------- | ------------------------------------------------------- |
@@ -127,9 +127,9 @@ graph LR
   bindings --> cores["libs/rust/* cores"]
 ```
 
-`tools/check-boundaries.mjs` reads the Nx graph and project tags, then fails the `lint` target when a dependency breaks these rules. The [architecture guide](docs/architecture.md) is the full placement and dependency reference.
+`tools/check-boundaries.mjs` reads the Nx graph and project tags, then fails the `lint` target when a dependency breaks these rules. The [architecture guide](docs/architecture.md) explains where projects belong and which dependencies are allowed.
 
-Before adding a project or concept, write an ordered plan and run `node tools/check-boundaries.mjs --preflight plan.json`. It prints a `LEGAL` or `BLOCKED` verdict for every entry and writes nothing; use `pnpm preflight:tui` for interactive planning. Treat `BLOCKED` as a stop and follow the minimal legal change in the diagnostic. The full procedure, including human-reviewed ownership transfers and same-name concepts across domains, is in [`docs/architecture.md`](docs/architecture.md).
+Before adding a project or concept, write an ordered plan and run `node tools/check-boundaries.mjs --preflight plan.json`. It prints a `LEGAL` or `BLOCKED` verdict for every entry and writes nothing; use `pnpm preflight:tui` for interactive planning. Treat `BLOCKED` as a stop and follow the smallest allowed change in the diagnostic. The full procedure, including human-reviewed ownership transfers and same-name concepts across domains, is in [`docs/architecture.md`](docs/architecture.md).
 
 ## Example projects
 
@@ -142,11 +142,11 @@ Before adding a project or concept, write an ordered plan and run `node tools/ch
 | [`libs/platform/mac/filesystem`](libs/platform/mac/filesystem) | SwiftPM library for macOS filesystem locations               |
 | [`libs/rust/search-index`](libs/rust/search-index)             | Standalone Rust library for search indexing                  |
 
-The examples exist to be replaced. To make the repository yours:
+The examples are meant to be replaced. To make the repository yours:
 
 1. Name libraries after business capabilities, not technical layers.
-2. Keep reusable rules inside domain libraries and let apps compose them.
-3. Tag every new project with its type, domain, platform, and language so the boundary check protects it.
+2. Keep reusable rules inside domain libraries and let apps combine them.
+3. Tag every new project with its type, domain, platform, and language so the boundary check can protect it.
 
 ## Everyday commands
 

@@ -239,7 +239,7 @@ function renderWorkflow(options: ResolvedOptions): string {
   })}`;
 }
 
-/** Render a complete selected repository before any destination mutation. */
+/** Render the selected repository before changing the destination. */
 export function renderRepository(
   template: TemplateSnapshot,
   options: ResolvedOptions,

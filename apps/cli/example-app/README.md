@@ -1,6 +1,6 @@
 # CLI Example App
 
-Minimal command line application in TypeScript. It composes domain libraries and owns no reusable logic.
+Small TypeScript command-line app. It combines domain libraries and contains no reusable logic.
 
 - Build with `pnpm nx run cli-example-app:build`
 - Run with `pnpm nx run cli-example-app:start -- your query`
@@ -8,4 +8,4 @@ Minimal command line application in TypeScript. It composes domain libraries and
 - Test with `pnpm nx run cli-example-app:test`
 - Lint with `pnpm nx run cli-example-app:lint`
 
-Lint runs `oxlint` with type aware rules from the root `.oxlintrc.json`.
+Lint uses `oxlint` with the type-aware rules in the root `.oxlintrc.json`.

@@ -53,7 +53,7 @@ function usageError(message: string, cause?: unknown): CreatorError {
   return new CreatorError("INVALID_ARGUMENT", message, cause === undefined ? undefined : { cause });
 }
 
-/** Parse the public command line without accepting unknown or repeated options. */
+/** Parse the public command line; reject unknown and repeated options. */
 export function parseCliArgs(argv: readonly string[]): CliArgs {
   const config: ParseArgsConfig = {
     args: [...argv],
@@ -189,7 +189,7 @@ export function parseApps(value: string): readonly AppId[] {
   return selected;
 }
 
-/** Turn command-line values into only the overrides explicitly supplied by a user. */
+/** Keep only the command-line settings the user supplied. */
 export function toOverrides(args: CliArgs): CreatorOverrides {
   const overrides: {
     name?: string;
