@@ -66,6 +66,8 @@ jobs:
         run: pnpm install --frozen-lockfile
       - id: architecture-acceptance
         run: pnpm architecture:acceptance
+      - id: preflight-tui-smoke
+        run: node tools/preflight-tui.mjs --smoke
       - id: verify-workspace
         run: pnpm nx run-many -t typecheck build test lint
       - id: check-format

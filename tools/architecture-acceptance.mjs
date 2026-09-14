@@ -1,5 +1,6 @@
 /* eslint-disable */
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { spawnSync } from "node:child_process";
+import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -85,6 +86,63 @@ async function scenarioBlockedTransfer(declarations, root) {
   return verdictResult(evaluatePreflight(parsePlan(planPath), declarations), expected, true);
 }
 
+async function scenarioUnknownProject(declarations, root) {
+  const planPath = await writePlan(root, "plan-unknown.json", [
+    {
+      action: "add-concept",
+      project: "@domains/missing-history",
+      tags: ["type:domain", "domain:clipboard", "lang:ts"],
+      concepts: ["item"],
+    },
+  ]);
+  const expected = [
+    "BLOCKED @domains/missing-history add-concept item | rule: project-not-found | minimal legal change: add-concept requires an existing project; add @domains/missing-history with add-domain or add-app first",
+  ];
+  return verdictResult(evaluatePreflight(parsePlan(planPath), declarations), expected, true);
+}
+
+async function snapshotFile(filePath) {
+  const data = await readFile(filePath, "utf8");
+  const { mtimeMs } = await stat(filePath);
+  return { data, mtimeMs };
+}
+
+async function scenarioReadOnlyTui(root) {
+  const planPath = join(root, "plan-readonly.json");
+  const manifestPath = join(import.meta.dirname, "..", "libs", "domains", "search", "package.json");
+  const changes = [
+    {
+      action: "add-domain",
+      project: "@domains/acceptance-smoke",
+      tags: ["type:domain", "domain:acceptance-smoke", "lang:ts"],
+      concepts: ["scenario"],
+    },
+  ];
+  await writeFile(planPath, JSON.stringify({ changes }));
+  const planBefore = await snapshotFile(planPath);
+  const manifestBefore = await snapshotFile(manifestPath);
+  const tui = spawnSync(process.execPath, [join(import.meta.dirname, "preflight-tui.mjs")], {
+    input: `${planPath}\nv\nq\n`,
+    encoding: "utf8",
+  });
+  const planAfter = await snapshotFile(planPath);
+  const manifestAfter = await snapshotFile(manifestPath);
+  const planUnchanged =
+    planBefore.data === planAfter.data && planBefore.mtimeMs === planAfter.mtimeMs;
+  const manifestUnchanged =
+    manifestBefore.data === manifestAfter.data && manifestBefore.mtimeMs === manifestAfter.mtimeMs;
+  const verdictShown = tui.stdout.includes("LEGAL @domains/acceptance-smoke add-domain scenario");
+  return {
+    pass: tui.status === 0 && verdictShown && planUnchanged && manifestUnchanged,
+    lines: [
+      `tui exit status: ${tui.status}`,
+      `plan content and mtime unchanged: ${planUnchanged}`,
+      `manifest content and mtime unchanged: ${manifestUnchanged}`,
+      `verdict rendered: ${verdictShown}`,
+    ],
+  };
+}
+
 function verdictResult(verdicts, expected, expectBlocked) {
   const observed = verdicts.map(formatVerdict);
   const statusesOk = verdicts.every((verdict) => statusMatches(verdict, expectBlocked));
@@ -118,8 +176,12 @@ try {
   runScenario("A2 legal growth", legalGrowth);
   const blockedTransfer = await scenarioBlockedTransfer(singleOwner.declarations, root);
   runScenario("A3 blocked transfer", blockedTransfer);
+  const unknownProject = await scenarioUnknownProject(singleOwner.declarations, root);
+  runScenario("A4 unknown project", unknownProject);
+  const readOnlyTui = await scenarioReadOnlyTui(root);
+  runScenario("A5 read-only tui", readOnlyTui);
 } finally {
   await rm(root, { recursive: true, force: true });
 }
-console.log(`architecture acceptance: ${3 - failures}/3 scenarios passed`);
+console.log(`architecture acceptance: ${5 - failures}/5 scenarios passed`);
 if (failures > 0) process.exitCode = 1;
