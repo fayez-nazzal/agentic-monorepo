@@ -59,7 +59,7 @@ async function rollback(
       const text = await handle.readFile({ encoding: "utf8" });
       if (file.digest.length === 0 || digest(text) === file.digest) await unlink(file.path);
     } catch {
-      // A changed or unavailable entry belongs to the user; never remove it.
+      // A changed or unavailable entry belongs to the user, so never remove it.
     }
   }
   for (const directory of [...directories].reverse()) {
@@ -69,7 +69,7 @@ async function rollback(
         await rmdir(directory.path);
       }
     } catch {
-      // Preserve entries that changed during rollback.
+      // Keep entries that changed while rolling back.
     }
   }
   if (destinationOwned) {
@@ -78,7 +78,7 @@ async function rollback(
       if (current.isDirectory() && (await readdir(destination.path)).length === 0)
         await rmdir(destination.path);
     } catch {
-      // Preserve a raced or changed destination.
+      // Keep a destination that changed during this operation.
     }
   }
 }
@@ -194,7 +194,7 @@ async function writeFileExclusive(
     try {
       await handle?.close();
     } catch {
-      // Ignore close failures while reporting the original write failure.
+      // Ignore close failures so the original write error can be reported.
     }
     if ((cause as NodeJS.ErrnoException).code === "EEXIST") {
       throw error("DESTINATION_CONFLICT", `Template file already exists: ${file.path}`, cause);
@@ -207,7 +207,7 @@ async function writeFileExclusive(
   checkAborted(signal);
 }
 
-/** Render and write a repository using exclusive files and ownership-aware rollback. */
+/** Render and write a repository with exclusive files and rollback that respects ownership. */
 export async function createRepository(
   template: TemplateSnapshot,
   options: ResolvedOptions,
@@ -236,7 +236,7 @@ export async function createRepository(
   }
 }
 
-/** Convenience helper for callers that have not inspected a destination yet. */
+/** Create a repository for callers that have not inspected the destination yet. */
 export async function createRepositoryAt(
   template: TemplateSnapshot,
   options: ResolvedOptions,

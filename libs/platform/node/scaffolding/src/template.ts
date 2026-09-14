@@ -19,7 +19,7 @@ export interface TemplateSnapshot {
   readonly variantLockfiles?: Readonly<Record<string, string>>;
 }
 
-/** Canonical JSON used for template digest calculation. */
+/** Canonical JSON used to calculate the template digest. */
 export function canonicalTemplateValue(
   snapshot: Pick<TemplateSnapshot, "files" | "variantLockfiles">,
 ): string {
@@ -135,7 +135,7 @@ function parseSnapshot(value: unknown): TemplateSnapshot {
   return snapshot;
 }
 
-/** Read, validate, and verify an immutable bundled template asset. */
+/** Read, check, and verify an immutable bundled template asset. */
 export async function loadTemplate(templateUrl: URL): Promise<TemplateSnapshot> {
   let text: string;
   try {

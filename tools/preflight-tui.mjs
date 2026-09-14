@@ -1,14 +1,13 @@
-// Interactive pre-flight planner for the concept registry.
+// Interactive planner for the concept registry.
 //
-// This file is a client of tools/check-boundaries.mjs, which stays the sole
-// Boundary and concept-registry enforcer: checker evaluation supplies verdicts;
-// The formatVerdict renderer and parsePlan parser own rendering and plan errors.
+// This file uses tools/check-boundaries.mjs, which is the only tool that
+// Enforces boundaries and the concept registry. It supplies verdicts;
+// FormatVerdict displays them, and parsePlan handles plan errors.
 //
-// Terminal interaction uses Node's built-in readline because a menu-driven
-// Prompt loop is sufficient for planning; no TUI framework dependency is
-// Needed. The tool writes exactly one file, the plan path, and only on the
-// Explicit save command. Validation uses a throwaway copy in a temp directory,
-// So project manifests are never touched.
+// Terminal interaction uses Node's built-in readline.
+// A menu and prompt loop are enough, so this tool does not need a TUI framework.
+// It writes exactly one file—the plan path—and only after explicit save.
+// Validation uses a temporary copy, so project manifests are never changed.
 //
 // Prompt answers must remain sequential; parallel input would reorder edits.
 // The JSON API uses null as its standard no-replacer argument.
@@ -563,8 +562,8 @@ async function interactiveMain(rl) {
   }
 }
 
-// Deterministic CI self-check. It evaluates against its own transfer fixture,
-// So changes to the real registry cannot alter expected statuses.
+// Deterministic CI self-check. It uses its own transfer fixture.
+// This keeps changes to the real registry from changing expected statuses.
 const smokePlan = {
   changes: [
     {

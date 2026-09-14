@@ -18,7 +18,7 @@ export type ComingSoonId =
 export type CatalogId = ComponentId | ComingSoonId;
 export type CapabilityStatus = "available" | "coming-soon";
 
-/** A command that can be safely passed to a child process without a shell. */
+/** A command that can be passed to a child process without a shell. */
 export interface CommandSpec {
   readonly executable: string;
   readonly args: readonly string[];
@@ -29,14 +29,14 @@ export interface CatalogDescriptor {
   readonly label: string;
   readonly hint: string;
   readonly status: CapabilityStatus;
-  /** Repository-relative POSIX paths, rooted at the template checkout. */
+  /** POSIX paths relative to the template checkout. */
   readonly sourcePaths: readonly string[];
-  /** Other capabilities that must be included before this one. */
+  /** Capabilities that must be included first. */
   readonly requires: readonly ComponentId[];
-  /** Nx/SwiftPM/Cargo project names emitted by this capability. */
+  /** Nx, SwiftPM, and Cargo project names this capability creates. */
   readonly projectNames: readonly string[];
   readonly nextCommands: readonly CommandSpec[];
-  /** Host/toolchain prerequisites, when applicable. */
+  /** Host and toolchain requirements, when needed. */
   readonly requirements: readonly string[];
 }
 

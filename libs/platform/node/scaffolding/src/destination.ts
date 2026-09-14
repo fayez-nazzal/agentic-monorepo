@@ -18,7 +18,7 @@ function conflict(message: string, cause?: unknown): CreatorError {
   );
 }
 
-/** Resolve a destination through its existing parent and enforce an empty target. */
+/** Resolve a destination through its existing parent and require an empty target. */
 export async function inspectDestination(directory: string): Promise<Destination> {
   const requested = resolve(process.cwd(), directory);
   let current;

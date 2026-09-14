@@ -4,7 +4,7 @@ import { resolve } from "node:path";
 
 import { CreatorError, type CreatorConfig, validateConfig } from "@domains/scaffolding";
 
-/** Read and strictly validate a creator configuration file. */
+/** Read and strictly check a creator configuration file. */
 export async function readConfig(filePath: string): Promise<CreatorConfig> {
   const absolutePath = resolve(process.cwd(), filePath);
   let source: string;

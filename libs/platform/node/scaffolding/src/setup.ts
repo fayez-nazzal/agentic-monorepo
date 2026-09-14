@@ -42,7 +42,7 @@ function terminate(child: ChildProcess): void {
     try {
       child.kill("SIGTERM");
     } catch {
-      // The process may have exited between the checks.
+      // The process may have exited since the check.
     }
   }
   const timer = setTimeout(() => {
@@ -115,7 +115,7 @@ function packageManagerVersion(value: unknown): string {
   return value.slice("pnpm@".length);
 }
 
-/** Run only explicitly requested setup operations, sequentially and without a shell. */
+/** Run only the setup operations the user requested, in order and without a shell. */
 export async function runSetup(
   directory: string,
   options: SetupOptions,
