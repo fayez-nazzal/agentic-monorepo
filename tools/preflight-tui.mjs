@@ -19,11 +19,18 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { createInterface } from "node:readline";
 
-import { evaluatePreflight, formatVerdict, parsePlan, runPreflight } from "./check-boundaries.mjs";
+import {
+  evaluatePreflight,
+  formatVerdict,
+  parsePlan,
+  runPreflight,
+  supportedPlanActions,
+} from "./check-boundaries.mjs";
 
-const actions = ["add-domain", "add-app", "add-concept"];
+const actions = supportedPlanActions();
 const usage = "[a]dd [e]dit N [d]elete N [m]ove N up|down [v]alidate [s]ave [q]uit";
 const fields = "[a]ction [p]roject [t]ags [c]oncepts — empty finishes";
+const transferFields = "[a]ction [p]roject [o]wner [d]omain [n]concept — empty finishes";
 
 class InputClosedError extends Error {
   constructor() {
@@ -70,8 +77,12 @@ async function promptList(rl, label, current, omitEmpty) {
   return parseList(trimmed);
 }
 
+function actionPrompt() {
+  return `action ${actions.map((action, index) => `[${index + 1}] ${action}`).join(" ")}: `;
+}
+
 async function promptAction(rl) {
-  const answer = await ask(rl, "action [1] add-domain [2] add-app [3] add-concept: ");
+  const answer = await ask(rl, actionPrompt());
   const choice = Math.trunc(Number(answer));
   if (choice >= 1 && choice <= actions.length) {
     return actions[choice - 1];
@@ -90,7 +101,23 @@ function defaultTags(action) {
   return [];
 }
 
+function transferFieldsOf(change) {
+  const clean = {};
+  if (change.owner !== undefined) {
+    clean.owner = change.owner;
+  }
+  if (change.domain !== undefined) {
+    clean.domain = change.domain;
+  }
+  if (change.concept !== undefined) {
+    clean.concept = change.concept;
+  }
+  return clean;
+}
 function normalizeChange(change) {
+  if (change.action === "transfer-concept") {
+    return { action: change.action, project: change.project, ...transferFieldsOf(change) };
+  }
   const clean = { action: change.action, project: change.project };
   if (change.tags !== undefined) {
     clean.tags = change.tags;
@@ -110,7 +137,28 @@ function changeFromPrompt(action, project, tags, concepts) {
   return normalizeChange(change);
 }
 
+async function promptTransferValue(rl, label) {
+  const answer = await ask(rl, label);
+  return answer.trim();
+}
+
+async function promptTransferChange(rl) {
+  const project = await promptTransferValue(rl, "target project name: ");
+  const owner = await promptTransferValue(rl, "current owner project: ");
+  const domain = await promptTransferValue(rl, "domain name: ");
+  const concept = await promptTransferValue(rl, "concept name: ");
+  const values = [project, owner, domain, concept];
+  if (values.some((value) => value === "")) {
+    console.log("  empty transfer field — change skipped");
+    return false;
+  }
+  return normalizeChange({ action: "transfer-concept", project, owner, domain, concept });
+}
+
 async function promptChange(rl, action) {
+  if (action === "transfer-concept") {
+    return promptTransferChange(rl);
+  }
   const answer = await ask(rl, "project name: ");
   const project = answer.trim();
   if (project === "") {
@@ -135,6 +183,9 @@ async function addChange(rl, session) {
 }
 
 function changeLabel(change) {
+  if (change.action === "transfer-concept") {
+    return `${change.action} ${change.project} | owner: ${change.owner} | claim: ${change.domain}:${change.concept}`;
+  }
   const tags = listHint(change.tags ?? []);
   const concepts = listHint(change.concepts ?? []);
   return `${change.action} ${change.project} | tags: ${tags} | concepts: ${concepts}`;
@@ -203,12 +254,19 @@ function moveChange(session, token, direction) {
   session.dirty = true;
 }
 
+function fieldsFor(change) {
+  if (change.action === "transfer-concept") {
+    return transferFields;
+  }
+  return fields;
+}
+
 async function editChange(rl, session, index) {
   const change = session.changes[index];
-  let field = await ask(rl, `edit ${index + 1}) ${changeLabel(change)} — ${fields}: `);
+  let field = await ask(rl, `edit ${index + 1}) ${changeLabel(change)} — ${fieldsFor(change)}: `);
   while (field.trim() !== "") {
     await editField(rl, change, field.trim());
-    field = await ask(rl, `edit ${index + 1}) — ${fields}: `);
+    field = await ask(rl, `edit ${index + 1}) — ${fieldsFor(change)}: `);
   }
   session.dirty = true;
 }
@@ -236,6 +294,25 @@ async function editProject(rl, change) {
   }
 }
 
+async function editTransferValue(rl, change, field, label) {
+  const answer = await ask(rl, `${label} [${change[field]}]: `);
+  if (answer.trim() !== "") {
+    change[field] = answer.trim();
+  }
+}
+
+async function editOwner(rl, change) {
+  await editTransferValue(rl, change, "owner", "owner project");
+}
+
+async function editDomain(rl, change) {
+  await editTransferValue(rl, change, "domain", "domain name");
+}
+
+async function editTransferConcept(rl, change) {
+  await editTransferValue(rl, change, "concept", "concept name");
+}
+
 async function editTags(rl, change) {
   change.tags = await promptList(rl, "tags", change.tags ?? []);
 }
@@ -249,6 +326,9 @@ const editHandlers = new Map([
   ["p", editProject],
   ["t", editTags],
   ["c", editConcepts],
+  ["o", editOwner],
+  ["d", editDomain],
+  ["n", editTransferConcept],
 ]);
 
 async function editAt(rl, session, token) {
@@ -431,15 +511,36 @@ async function interactiveMain(rl) {
   }
 }
 
-// Deterministic CI self-check. It evaluates against its own empty declaration
-// Fixture, so changes to the real registry cannot alter expected statuses.
+// Deterministic CI self-check. It evaluates against its own transfer fixture,
+// So changes to the real registry cannot alter expected statuses.
 const smokePlan = {
   changes: [
+    {
+      action: "transfer-concept",
+      project: "@domains/tui-smoke-target",
+      owner: "@domains/tui-smoke-source",
+      domain: "inbox",
+      concept: "message",
+    },
+    {
+      action: "transfer-concept",
+      project: "@domains/tui-smoke-archive",
+      owner: "@domains/tui-smoke-source",
+      domain: "inbox",
+      concept: "message",
+    },
+    {
+      action: "transfer-concept",
+      project: "@domains/tui-smoke-archive",
+      owner: "@domains/tui-smoke-target",
+      domain: "inbox",
+      concept: "message",
+    },
     {
       action: "add-domain",
       project: "@domains/tui-smoke-inbox",
       tags: ["type:domain", "domain:inbox", "lang:ts"],
-      concepts: ["message"],
+      concepts: ["digest"],
     },
     {
       action: "add-app",
@@ -448,15 +549,31 @@ const smokePlan = {
     },
     {
       action: "add-domain",
-      project: "@domains/tui-smoke-archive",
+      project: "@domains/tui-smoke-message",
       tags: ["type:domain", "domain:inbox", "lang:ts"],
       concepts: ["message"],
     },
     { action: "add-concept", project: "@domains/tui-smoke-missing", concepts: ["digest"] },
   ],
-  expectedStatuses: ["legal", "legal", "blocked", "blocked"],
+  expectedStatuses: ["legal", "blocked", "legal", "legal", "legal", "blocked", "blocked"],
 };
-const smokeDeclarations = [];
+const smokeDeclarations = [
+  {
+    name: "@domains/tui-smoke-source",
+    tags: ["type:domain", "domain:inbox", "lang:ts"],
+    concepts: ["message"],
+  },
+  {
+    name: "@domains/tui-smoke-target",
+    tags: ["type:domain", "domain:inbox", "lang:ts"],
+    concepts: [],
+  },
+  {
+    name: "@domains/tui-smoke-archive",
+    tags: ["type:domain", "domain:inbox", "lang:ts"],
+    concepts: [],
+  },
+];
 
 function reportSmokeStatuses(verdicts, expected) {
   const observed = verdicts.map((verdict) => verdict.status);

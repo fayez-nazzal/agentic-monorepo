@@ -45,21 +45,27 @@ A `type:domain` project declares the business concepts it owns in the `nx` field
 - A concept-declaring project must carry a `domain:<name>` tag.
 - One owner per `(domain, concept)`: two projects may not declare the same pair. The same concept name under different domains is a different concept.
 
-`node tools/check-boundaries.mjs --preflight <plan.json>` evaluates a proposed change before any code is written. The plan lists `add-domain`, `add-app`, and `add-concept` entries, each with `project`, `tags`, and `concepts`; every entry is checked against the current registry and the entries before it. The mode writes nothing, prints one `LEGAL` or `BLOCKED` verdict per entry, and exits 0 only when every entry is legal.
+`node tools/check-boundaries.mjs --preflight <plan.json>` evaluates a proposed change before any code is written. The plan lists `add-domain`, `add-app`, `add-concept`, and `transfer-concept` entries. Add entries use `project`, `tags`, and `concepts`; a transfer uses `project`, `owner`, `domain`, and `concept`. Every entry is checked against the current registry and the legal entries before it. The mode writes nothing, prints one `LEGAL` or `BLOCKED` verdict per entry, and exits 0 only when every entry is legal.
 
-`pnpm preflight:tui` opens an interactive planner over the same rules. It loads an existing plan or starts a fresh `plan.json`, edits the ordered change list, validates to get the identical `LEGAL`/`BLOCKED` verdicts, and writes only the plan file, only on the explicit `save` command. Project manifests are never touched. Every rule decision is delegated to `tools/check-boundaries.mjs`; the planner owns no rules of its own. `node tools/preflight-tui.mjs --smoke` runs its non-interactive self-check, which CI runs after `architecture:acceptance`.
+`pnpm preflight:tui` opens an interactive planner over the same rules. It loads an existing plan or starts a fresh `plan.json`, edits the ordered change list, validates to get the identical `LEGAL`/`BLOCKED` verdicts, and writes only the plan file, only on the explicit `save` command. Project manifests are never touched. Every rule decision is delegated to `tools/check-boundaries.mjs`; the planner owns no rules of its own. Every transfer prompt names the target project, current owner, domain, and concept. `node tools/preflight-tui.mjs --smoke` runs its non-interactive self-check, which CI runs after `architecture:acceptance`.
+
+### Concept ownership transfer
+
+`transfer-concept` models the human-reviewed move that a duplicate `add-concept` claim previously described but could not express. Its `project` is the new owner; `owner` is the current owner; `domain` is the bare domain name; and `concept` is the registry claim to move. The owner and target must exist in the current or earlier simulated state, be distinct single-domain `type:domain` projects tagged `domain:<domain>`, the owner must currently own `(domain, concept)`, and the target must not already declare `concept`.
+
+The checker blocks missing or ambiguous projects, tags, claims, and duplicate targets with a named rule and minimal legal change. Malformed transfer fields fail plan parsing. A legal transfer updates only the simulated pre-flight registry by removing the claim from `owner` and adding it to `project`; blocked entries do not update simulated state. The checker never edits manifests: after a legal verdict, a human-reviewed manifest change is still required. The CLI and TUI use the same parser, evaluator, and verdict renderer.
 
 ## Architecture pre-flight procedure
 
-Agents must run pre-flight before writing a new domain or app manifest, adding concepts, or changing concept ownership. Create an ordered `plan.json` containing `add-domain`, `add-app`, and `add-concept` entries, then run:
+Agents must run pre-flight before writing a new domain or app manifest, adding concepts, or changing concept ownership. Create an ordered `plan.json` containing `add-domain`, `add-app`, `add-concept`, or `transfer-concept` entries, then run:
 
 ```sh
 node tools/check-boundaries.mjs --preflight plan.json
 ```
 
-The CLI prints one `LEGAL` or `BLOCKED` verdict per entry and exits `0` only when every entry is legal. A `BLOCKED` result is a stop: do not write the proposed files. `add-concept` targets an existing project; an unknown target is not treated as a new project. Use `pnpm preflight:tui` when editing a plan interactively; validation is read-only, and the TUI writes only the plan after an explicit `save`.
+The CLI prints one `LEGAL` or `BLOCKED` verdict per entry and exits `0` only when every entry is legal. A `BLOCKED` result is a stop: do not write the proposed files. `add-concept` targets an existing project; an unknown target is not treated as a new project. `transfer-concept` targets an existing domain project and requires its named owner to hold the claim. Use `pnpm preflight:tui` when editing a plan interactively; validation is read-only, and the TUI writes only the plan after an explicit `save`.
 
-For a blocked ownership claim, keep the existing owner and either choose a distinct concept or obtain a human-reviewed ownership transfer. A transfer is a deliberate manifest change, not an automatic pre-flight action. Same-name concepts in different `domain:<name>` projects are separate legal claims because ownership is keyed by `(domain, concept)`.
+For a blocked ownership claim, keep the existing owner and either choose a distinct concept or use a legal `transfer-concept` entry followed by a human-reviewed manifest change. Same-name concepts in different `domain:<name>` projects are separate legal claims because ownership is keyed by `(domain, concept)`.
 
 The creator's review and `--dry-run` validate destination and selected template files, not inferred concept ownership. Generated workspaces include the checker, acceptance script, and TUI; their CI runs `pnpm architecture:acceptance` and the deterministic TUI smoke check. Agents still run the explicit pre-flight above at the architecture planning boundary.
 
