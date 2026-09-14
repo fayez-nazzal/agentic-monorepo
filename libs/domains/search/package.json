@@ -20,6 +20,7 @@
       "type:domain",
       "domain:search",
       "lang:ts"
-    ]
+    ],
+    "concepts": ["query", "result"]
   }
 }
