@@ -32,15 +32,22 @@ async function writePlan(root, file, changes) {
 }
 
 async function scenarioSingleOwner(root) {
-  const directory = join(root, "libs", "domains", "clipboard");
-  await writeManifest(directory, clipboardManifest());
-  const [declaration] = readConceptDeclaration(join(directory, "package.json"));
-  if (declaration === undefined) throw new Error("clipboard fixture manifest is unreadable");
-  const violations = registryViolations([declaration]);
+  const clipboardDirectory = join(root, "libs", "domains", "clipboard");
+  const historyDirectory = join(root, "libs", "domains", "clipboard-history");
+  await writeManifest(clipboardDirectory, clipboardManifest());
+  await writeManifest(historyDirectory, {
+    name: "@domains/clipboard-history",
+    nx: { tags: ["type:domain", "domain:clipboard", "lang:ts"], concepts: [] },
+  });
+  const declarations = [
+    ...readConceptDeclaration(join(clipboardDirectory, "package.json")),
+    ...readConceptDeclaration(join(historyDirectory, "package.json")),
+  ];
+  const violations = registryViolations(declarations);
   return {
     pass: violations.length === 0,
     lines: [`observed registry violations: ${violations.length}`, ...violations],
-    declarations: [declaration],
+    declarations,
   };
 }
 

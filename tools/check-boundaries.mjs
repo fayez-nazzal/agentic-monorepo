@@ -360,8 +360,8 @@ function conceptTagViolations(declaration) {
 
 function registerClaim(ownersByClaim, domain, concept, name) {
   const concepts = ownersByClaim.get(domain) ?? new Map();
-  const owners = concepts.get(concept) ?? [];
-  owners.push(name);
+  const owners = concepts.get(concept) ?? new Set();
+  owners.add(name);
   concepts.set(concept, owners);
   ownersByClaim.set(domain, concepts);
 }
@@ -383,7 +383,7 @@ function conflictingClaims(ownersByClaim) {
   const found = [];
   for (const [domain, concepts] of ownersByClaim) {
     for (const [concept, owners] of concepts) {
-      if (owners.length > 1) found.push(claimViolation(domain, concept, owners));
+      if (owners.size > 1) found.push(claimViolation(domain, concept, owners));
     }
   }
   return found;
@@ -395,7 +395,7 @@ function joinNames(names) {
 }
 
 function claimViolation(domain, concept, owners) {
-  return `domain:${domain} concept ${concept} is declared by ${joinNames(owners)} | rule: one-owner-per-concept | minimal legal change: transfer ${domain}:${concept} ownership in a human-reviewed change, or declare a distinct concept name`;
+  return `domain:${domain} concept ${concept} is declared by ${joinNames([...owners])} | rule: one-owner-per-concept | minimal legal change: transfer ${domain}:${concept} ownership in a human-reviewed change, or declare a distinct concept name`;
 }
 
 function parsePlan(planPath) {
@@ -492,6 +492,14 @@ function changeReasons(change, tags, concepts, context) {
 }
 
 function actionReasons(change, tags, context) {
+  if (change.action === "add-concept" && !context.declared.has(change.project)) {
+    return [
+      blockReason(
+        "project-not-found",
+        `add-concept requires an existing project; add ${change.project} with add-domain or add-app first`,
+      ),
+    ];
+  }
   if (change.action === "add-concept") return [];
   if (context.declared.has(change.project)) {
     return [
