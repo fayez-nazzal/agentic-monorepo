@@ -86,6 +86,57 @@ async function scenarioBlockedTransfer(declarations, root) {
   return verdictResult(evaluatePreflight(parsePlan(planPath), declarations), expected, true);
 }
 
+async function scenarioTransfer(declarations, root) {
+  const archiveDirectory = join(root, "libs", "domains", "clipboard-archive");
+  const archiveManifestPath = join(archiveDirectory, "package.json");
+  await writeManifest(archiveDirectory, {
+    name: "@domains/clipboard-archive",
+    nx: { tags: ["type:domain", "domain:clipboard", "lang:ts"], concepts: [] },
+  });
+  const transferDeclarations = [...declarations, ...readConceptDeclaration(archiveManifestPath)];
+  const planPath = await writePlan(root, "plan-transfer.json", [
+    {
+      action: "transfer-concept",
+      project: "@domains/clipboard-history",
+      owner: "@domains/clipboard",
+      domain: "clipboard",
+      concept: "item",
+    },
+    {
+      action: "transfer-concept",
+      project: "@domains/clipboard-archive",
+      owner: "@domains/clipboard",
+      domain: "clipboard",
+      concept: "item",
+    },
+    {
+      action: "transfer-concept",
+      project: "@domains/clipboard-archive",
+      owner: "@domains/clipboard-history",
+      domain: "clipboard",
+      concept: "item",
+    },
+  ]);
+  const manifestBefore = await snapshotFile(archiveManifestPath);
+  const verdicts = evaluatePreflight(parsePlan(planPath), transferDeclarations);
+  const manifestAfter = await snapshotFile(archiveManifestPath);
+  const manifestUnchanged =
+    manifestBefore.data === manifestAfter.data && manifestBefore.mtimeMs === manifestAfter.mtimeMs;
+  const result = orderedVerdictResult(
+    verdicts,
+    [
+      "LEGAL @domains/clipboard-history transfer-concept clipboard:item from @domains/clipboard",
+      "BLOCKED @domains/clipboard-archive transfer-concept clipboard:item from @domains/clipboard | rule: transfer-owner-not-current | conflicts with @domains/clipboard-history | minimal legal change: set owner to @domains/clipboard-history before transferring clipboard:item",
+      "LEGAL @domains/clipboard-archive transfer-concept clipboard:item from @domains/clipboard-history",
+    ],
+    ["legal", "blocked", "legal"],
+  );
+  return {
+    pass: result.pass && manifestUnchanged,
+    lines: manifestUnchanged ? result.lines : [...result.lines, "archive manifest changed"],
+  };
+}
+
 async function scenarioUnknownProject(declarations, root) {
   const planPath = await writePlan(root, "plan-unknown.json", [
     {
@@ -99,6 +150,28 @@ async function scenarioUnknownProject(declarations, root) {
     "BLOCKED @domains/missing-history add-concept item | rule: project-not-found | minimal legal change: add-concept requires an existing project; add @domains/missing-history with add-domain or add-app first",
   ];
   return verdictResult(evaluatePreflight(parsePlan(planPath), declarations), expected, true);
+}
+
+async function scenarioMalformedTransfer(root) {
+  const planPath = await writePlan(root, "plan-malformed-transfer.json", [
+    {
+      action: "transfer-concept",
+      project: "@domains/clipboard-history",
+      domain: "clipboard",
+      concept: "item",
+    },
+  ]);
+  const expected = "change 0 owner must be a non-empty string without surrounding whitespace";
+  let observed = "plan was accepted";
+  try {
+    parsePlan(planPath);
+  } catch (error) {
+    observed = error.message;
+  }
+  return {
+    pass: observed === expected,
+    lines: [`malformed transfer rejected: ${observed === expected}`, observed],
+  };
 }
 
 async function snapshotFile(filePath) {
@@ -119,9 +192,22 @@ async function scenarioReadOnlyTui(root) {
   const changes = [
     {
       action: "add-domain",
-      project: "@domains/acceptance-smoke",
+      project: "@domains/acceptance-source",
       tags: ["type:domain", "domain:acceptance-smoke", "lang:ts"],
       concepts: ["scenario"],
+    },
+    {
+      action: "add-domain",
+      project: "@domains/acceptance-target",
+      tags: ["type:domain", "domain:acceptance-smoke", "lang:ts"],
+      concepts: [],
+    },
+    {
+      action: "transfer-concept",
+      project: "@domains/acceptance-target",
+      owner: "@domains/acceptance-source",
+      domain: "acceptance-smoke",
+      concept: "scenario",
     },
   ];
   await writeFile(planPath, JSON.stringify({ changes }));
@@ -137,18 +223,30 @@ async function scenarioReadOnlyTui(root) {
     planBefore.data === planAfter.data && planBefore.mtimeMs === planAfter.mtimeMs;
   const manifestUnchanged =
     manifestBefore.data === manifestAfter.data && manifestBefore.mtimeMs === manifestAfter.mtimeMs;
-  const verdictShown = tui.stdout.includes("LEGAL @domains/acceptance-smoke add-domain scenario");
+  const verdictShown =
+    tui.stdout.includes("LEGAL @domains/acceptance-source add-domain scenario") &&
+    tui.stdout.includes(
+      "LEGAL @domains/acceptance-target transfer-concept acceptance-smoke:scenario from @domains/acceptance-source",
+    );
   return {
     pass: tui.status === 0 && verdictShown && planUnchanged && manifestUnchanged,
     lines: [
       `tui exit status: ${tui.status}`,
       `plan content and mtime unchanged: ${planUnchanged}`,
       `manifest content and mtime unchanged: ${manifestUnchanged}`,
-      `verdict rendered: ${verdictShown}`,
+      `verdicts rendered: ${verdictShown}`,
     ],
   };
 }
 
+function orderedVerdictResult(verdicts, expected, expectedStatuses) {
+  const observed = verdicts.map(formatVerdict);
+  const statusesOk =
+    verdicts.length === expectedStatuses.length &&
+    verdicts.every((verdict, index) => verdict.status === expectedStatuses[index]);
+  const pass = statusesOk && observed.join("\n") === expected.join("\n");
+  return { pass, lines: scenarioLines(pass, expected, observed) };
+}
 function verdictResult(verdicts, expected, expectBlocked) {
   const observed = verdicts.map(formatVerdict);
   const statusesOk = verdicts.every((verdict) => statusMatches(verdict, expectBlocked));
@@ -184,10 +282,14 @@ try {
   runScenario("A3 blocked transfer", blockedTransfer);
   const unknownProject = await scenarioUnknownProject(singleOwner.declarations, root);
   runScenario("A4 unknown project", unknownProject);
+  const transfer = await scenarioTransfer(singleOwner.declarations, root);
+  runScenario("A5 ownership transfer", transfer);
+  const malformedTransfer = await scenarioMalformedTransfer(root);
+  runScenario("A6 malformed transfer", malformedTransfer);
   const readOnlyTui = await scenarioReadOnlyTui(root);
-  runScenario("A5 read-only tui", readOnlyTui);
+  runScenario("A7 read-only tui", readOnlyTui);
 } finally {
   await rm(root, { recursive: true, force: true });
 }
-console.log(`architecture acceptance: ${5 - failures}/5 scenarios passed`);
+console.log(`architecture acceptance: ${7 - failures}/7 scenarios passed`);
 if (failures > 0) process.exitCode = 1;

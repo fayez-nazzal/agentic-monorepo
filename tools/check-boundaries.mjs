@@ -35,6 +35,13 @@ const preflightTypeTags = {
   "add-app": "type:app",
   "add-concept": "type:domain",
 };
+const preflightActions = [...Object.keys(preflightTypeTags), "transfer-concept"];
+
+const transferPlanKeys = new Set(["action", "project", "owner", "domain", "concept"]);
+
+function supportedPlanActions() {
+  return [...preflightActions];
+}
 
 function loadGraph() {
   const tempDir = mkdtempSync(join(tmpdir(), "boundaries-graph-"));
@@ -410,8 +417,11 @@ function parseChange(change, index) {
   if (typeof change !== "object" || change === null) {
     throw new Error(`change ${index} must be an object`);
   }
-  if (!Object.hasOwn(preflightTypeTags, change.action)) {
+  if (!preflightActions.includes(change.action)) {
     throw new Error(`change ${index} has unsupported action ${JSON.stringify(change.action)}`);
+  }
+  if (change.action === "transfer-concept") {
+    return parseTransferChange(change, index);
   }
   if (typeof change.project !== "string" || change.project === "") {
     throw new Error(`change ${index} must name a project`);
@@ -422,6 +432,29 @@ function parseChange(change, index) {
     tags: optionalStrings(change.tags, `change ${index} tags`),
     concepts: optionalStrings(change.concepts, `change ${index} concepts`),
   };
+}
+
+function parseTransferChange(change, index) {
+  const unexpected = Object.keys(change).find((key) => !transferPlanKeys.has(key));
+  if (unexpected !== undefined) {
+    throw new Error(
+      `change ${index} transfer-concept does not accept ${unexpected}; use owner, domain, and concept`,
+    );
+  }
+  return {
+    action: "transfer-concept",
+    project: requiredPlanString(change.project, `change ${index} project`),
+    owner: requiredPlanString(change.owner, `change ${index} owner`),
+    domain: requiredPlanString(change.domain, `change ${index} domain`),
+    concept: requiredPlanString(change.concept, `change ${index} concept`),
+  };
+}
+
+function requiredPlanString(value, label) {
+  if (typeof value !== "string" || value === "" || value.trim() !== value) {
+    throw new Error(`${label} must be a non-empty string without surrounding whitespace`);
+  }
+  return value;
 }
 
 function optionalStrings(value, label) {
@@ -484,11 +517,108 @@ function mergedConcepts(change, existing) {
 }
 
 function changeReasons(change, tags, concepts, context) {
+  if (change.action === "transfer-concept") {
+    return transferReasons(change, context);
+  }
   return [
     ...actionReasons(change, tags, context),
     ...declarationReasons(change, tags, concepts),
     ...ownershipReasons(change, tags, concepts, context.ownersByClaim),
   ];
+}
+
+function transferReasons(change, context) {
+  const owner = context.declared.get(change.owner);
+  if (owner === undefined) {
+    return [
+      blockReason(
+        "transfer-owner-not-found",
+        `identify the existing owner of ${change.domain}:${change.concept}, or add ${change.owner} with add-domain first`,
+      ),
+    ];
+  }
+  const target = context.declared.get(change.project);
+  if (target === undefined) {
+    return [
+      blockReason(
+        "transfer-target-not-found",
+        `add ${change.project} with add-domain before transferring ${change.domain}:${change.concept}`,
+      ),
+    ];
+  }
+  if (change.owner === change.project) {
+    return [
+      blockReason(
+        "transfer-distinct-projects",
+        `choose different owner and target projects to move ${change.domain}:${change.concept}`,
+      ),
+    ];
+  }
+  const ownerTypeReasons = transferProjectReasons(change, owner, "owner", change.owner);
+  if (ownerTypeReasons.length > 0) return ownerTypeReasons;
+  const targetTypeReasons = transferProjectReasons(change, target, "target", change.project);
+  if (targetTypeReasons.length > 0) return targetTypeReasons;
+  if (target.concepts.includes(change.concept)) {
+    return [
+      blockReason(
+        "transfer-target-already-owns",
+        `remove ${change.domain}:${change.concept} from ${change.project}, or choose a target without it`,
+        change.project,
+      ),
+    ];
+  }
+  const owners = [...(context.ownersByClaim.get(change.domain)?.get(change.concept) ?? [])].sort(
+    (left, right) => left.localeCompare(right),
+  );
+  if (owners.length === 0) {
+    return [
+      blockReason(
+        "transfer-claim-not-found",
+        `choose an existing owner of ${change.domain}:${change.concept}; transfer-concept cannot create a claim`,
+      ),
+    ];
+  }
+  if (owners.length > 1) {
+    return [
+      blockReason(
+        "transfer-claim-multiple-owners",
+        `resolve ${change.domain}:${change.concept} to one owner before transferring it`,
+        joinNames(owners),
+      ),
+    ];
+  }
+  if (owners[0] !== change.owner) {
+    return [
+      blockReason(
+        "transfer-owner-not-current",
+        `set owner to ${owners[0]} before transferring ${change.domain}:${change.concept}`,
+        owners[0],
+      ),
+    ];
+  }
+  return [];
+}
+
+function transferProjectReasons(change, project, role, projectName) {
+  const recognized = project.tags.filter((tag) => typeTags.has(tag));
+  if (recognized.length !== 1 || recognized[0] !== "type:domain") {
+    return [
+      blockReason(
+        `transfer-${role}-type`,
+        `re-tag ${role} ${projectName} as exactly type:domain before transferring ${change.domain}:${change.concept}`,
+      ),
+    ];
+  }
+  const domains = domainNamesOf(project.tags);
+  if (domains.length !== 1 || domains[0] !== change.domain) {
+    return [
+      blockReason(
+        `transfer-${role}-domain`,
+        `set ${role} ${projectName} domain tags to exactly ${domainTagPrefix}${change.domain} before transferring ${change.domain}:${change.concept}`,
+      ),
+    ];
+  }
+  return [];
 }
 
 function actionReasons(change, tags, context) {
@@ -562,11 +692,21 @@ function blockReason(rule, minimalChange, conflictsWith) {
 }
 
 function applyChange(change, tags, concepts, context) {
-  context.declared.set(change.project, { tags: [...tags], concepts });
+  if (change.action === "transfer-concept") {
+    const source = context.declared.get(change.owner);
+    const target = context.declared.get(change.project);
+    source.concepts = source.concepts.filter((concept) => concept !== change.concept);
+    target.concepts = [...target.concepts, change.concept];
+  } else {
+    context.declared.set(change.project, { tags: [...tags], concepts });
+  }
   context.ownersByClaim = ownershipOf(context.declared);
 }
 
 function conceptSuffix(change) {
+  if (change.action === "transfer-concept") {
+    return ` ${change.domain}:${change.concept} from ${change.owner}`;
+  }
   if (change.concepts === undefined || change.concepts.length === 0) return "";
   return ` ${change.concepts.join(", ")}`;
 }
@@ -647,4 +787,5 @@ export {
   readConceptDeclaration,
   registryViolations,
   runPreflight,
+  supportedPlanActions,
 };
