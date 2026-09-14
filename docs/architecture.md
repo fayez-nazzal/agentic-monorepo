@@ -80,7 +80,7 @@ These principles apply to every configurable tool in this repository, including 
 - Every check is `error` or `off`. A warning that does not fail the task is noise: an agent spends tokens reading it, and people learn to ignore it.
 - One tool owns each kind of failure. Duplicate diagnostics cost time twice. `oxfmt` owns TypeScript formatting and import order. `oxlint` owns TypeScript semantics and unused code. `tsc` owns types. `swift format` owns Swift formatting. SwiftLint owns Swift semantics. `rustfmt` owns Rust formatting. `clippy` owns Rust semantics. The graph checker owns boundaries.
 - Prefer automatic fixes to reports. A formatter can fix a violation without spending tokens. Formatters, not linters, handle sorting and layout.
-- A rule becomes `error` when preventing its failure costs more than the ceremony it requires. Rules that force boilerplate are turned off by name in the config, keeping every exception visible and deliberate.
+- A rule becomes `error` when the failure it prevents would cost more than the ceremony the rule requires. Rules that force boilerplate are turned off by name in the config, keeping every exception visible and deliberate.
 - Prefer tool defaults to custom style. Models are trained on normally formatted code, and each custom style choice turns generation into correction.
 - Enforce code shape mechanically. `max-depth`, `max-lines-per-function`, and `max-params` keep functions short enough to read in one pass.
 
