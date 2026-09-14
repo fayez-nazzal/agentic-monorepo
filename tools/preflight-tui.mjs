@@ -432,7 +432,7 @@ async function interactiveMain(rl) {
 }
 
 // Deterministic CI self-check. It evaluates against its own empty declaration
-// fixture, so changes to the real registry cannot alter expected statuses.
+// Fixture, so changes to the real registry cannot alter expected statuses.
 const smokePlan = {
   changes: [
     {
