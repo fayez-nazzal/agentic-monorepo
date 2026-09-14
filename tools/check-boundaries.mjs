@@ -1,8 +1,8 @@
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, realpathSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-/* eslint-disable curly, init-declarations, max-depth, max-lines-per-function, max-statements, no-array-sort, no-continue */
+/* eslint-disable curly, init-declarations, max-depth, max-lines, max-lines-per-function, max-statements, no-array-sort, no-continue */
 import crossSpawn from "cross-spawn";
 
 const failureExitCode = 1;
@@ -29,6 +29,12 @@ const bindingEcosystemLanguages = {
   "binding:swift": ["lang:swift"],
 };
 const ffiCratePrefixes = ["napi", "uniffi"];
+const domainTagPrefix = "domain:";
+const preflightTypeTags = {
+  "add-domain": "type:domain",
+  "add-app": "type:app",
+  "add-concept": "type:domain",
+};
 
 function loadGraph() {
   const tempDir = mkdtempSync(join(tmpdir(), "boundaries-graph-"));
@@ -277,17 +283,349 @@ function thirdPartyDependencyViolations(graph) {
   return found;
 }
 
-const graph = loadGraph();
-const violations = [
-  ...graphViolations(graph),
-  ...typeTagViolations(graph),
-  ...bindingTagViolations(graph),
-  ...ffiViolations(graph),
-  ...thirdPartyDependencyViolations(graph),
-];
-for (const violation of violations) console.error(violation);
-if (violations.length === 0) {
-  console.log(`boundaries ok across ${Object.keys(graph.nodes).length} projects`);
-} else {
-  process.exitCode = failureExitCode;
+function domainNamesOf(tags) {
+  return tags
+    .filter((tag) => tag.startsWith(domainTagPrefix))
+    .map((tag) => tag.slice(domainTagPrefix.length));
 }
+
+function manifestTags(nxField) {
+  if (!Array.isArray(nxField.tags)) return [];
+  return nxField.tags.filter((tag) => typeof tag === "string");
+}
+
+function conceptNamesOf(nxField) {
+  const { concepts } = nxField;
+  if (concepts === undefined) return [];
+  if (!Array.isArray(concepts) || !concepts.every((name) => typeof name === "string")) {
+    return false;
+  }
+  return concepts;
+}
+
+function readConceptDeclaration(manifestPath) {
+  let manifest;
+  try {
+    manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+  } catch {
+    return [];
+  }
+  if (typeof manifest.name !== "string" || manifest.name === "") return [];
+  const nxField = manifest.nx ?? {};
+  return [{ name: manifest.name, tags: manifestTags(nxField), concepts: conceptNamesOf(nxField) }];
+}
+
+function conceptDeclarations(graph) {
+  const declarations = [];
+  for (const node of Object.values(graph.nodes)) {
+    if (node.data.root === ".") continue;
+    declarations.push(...readConceptDeclaration(join(node.data.root, "package.json")));
+  }
+  return declarations;
+}
+
+function registryViolations(declarations) {
+  const found = [];
+  for (const declaration of declarations) {
+    found.push(...declarationViolations(declaration));
+  }
+  found.push(...conceptOwnershipViolations(declarations));
+  return found;
+}
+
+function declarationViolations(declaration) {
+  if (declaration.concepts === false) {
+    return [
+      `${declaration.name} declares nx.concepts that is not an array of concept names | rule: concepts-format | minimal legal change: make nx.concepts an array of concept names or remove it`,
+    ];
+  }
+  if (declaration.concepts.length === 0) return [];
+  return conceptTagViolations(declaration);
+}
+
+function conceptTagViolations(declaration) {
+  const found = [];
+  if (!declaration.tags.includes("type:domain")) {
+    found.push(
+      `${declaration.name} declares concepts without type:domain | rule: domain-only-concepts | minimal legal change: remove the concepts field or re-tag ${declaration.name} as type:domain`,
+    );
+  }
+  if (domainNamesOf(declaration.tags).length === 0) {
+    found.push(
+      `${declaration.name} declares concepts without a ${domainTagPrefix}<name> tag | rule: concepts-need-domain-tag | minimal legal change: add a ${domainTagPrefix}<name> tag to ${declaration.name} or remove its concepts`,
+    );
+  }
+  return found;
+}
+
+function registerClaim(ownersByClaim, domain, concept, name) {
+  const concepts = ownersByClaim.get(domain) ?? new Map();
+  const owners = concepts.get(concept) ?? [];
+  owners.push(name);
+  concepts.set(concept, owners);
+  ownersByClaim.set(domain, concepts);
+}
+
+function conceptOwnershipViolations(declarations) {
+  const ownersByClaim = new Map();
+  for (const declaration of declarations) {
+    if (declaration.concepts === false) continue;
+    for (const domain of domainNamesOf(declaration.tags)) {
+      for (const concept of declaration.concepts) {
+        registerClaim(ownersByClaim, domain, concept, declaration.name);
+      }
+    }
+  }
+  return conflictingClaims(ownersByClaim);
+}
+
+function conflictingClaims(ownersByClaim) {
+  const found = [];
+  for (const [domain, concepts] of ownersByClaim) {
+    for (const [concept, owners] of concepts) {
+      if (owners.length > 1) found.push(claimViolation(domain, concept, owners));
+    }
+  }
+  return found;
+}
+
+function joinNames(names) {
+  if (names.length === 2) return `${names[0]} and ${names[1]}`;
+  return names.join(", ");
+}
+
+function claimViolation(domain, concept, owners) {
+  return `domain:${domain} concept ${concept} is declared by ${joinNames(owners)} | rule: one-owner-per-concept | minimal legal change: transfer ${domain}:${concept} ownership in a human-reviewed change, or declare a distinct concept name`;
+}
+
+function parsePlan(planPath) {
+  const plan = JSON.parse(readFileSync(planPath, "utf8"));
+  if (typeof plan !== "object" || plan === null || !Array.isArray(plan.changes)) {
+    throw new Error(`plan ${planPath} must be an object with a changes array`);
+  }
+  return plan.changes.map((change, index) => parseChange(change, index));
+}
+
+function parseChange(change, index) {
+  if (typeof change !== "object" || change === null) {
+    throw new Error(`change ${index} must be an object`);
+  }
+  if (!Object.hasOwn(preflightTypeTags, change.action)) {
+    throw new Error(`change ${index} has unsupported action ${JSON.stringify(change.action)}`);
+  }
+  if (typeof change.project !== "string" || change.project === "") {
+    throw new Error(`change ${index} must name a project`);
+  }
+  return {
+    action: change.action,
+    project: change.project,
+    tags: optionalStrings(change.tags, `change ${index} tags`),
+    concepts: optionalStrings(change.concepts, `change ${index} concepts`),
+  };
+}
+
+function optionalStrings(value, label) {
+  if (Array.isArray(value) && value.every((entry) => typeof entry === "string")) return value;
+  if (value === undefined) return value;
+  throw new Error(`${label} must be an array of strings`);
+}
+
+function declaredProjects(declarations) {
+  const declared = new Map();
+  for (const declaration of declarations) {
+    const concepts = conceptList(declaration.concepts);
+    declared.set(declaration.name, { tags: [...declaration.tags], concepts: [...concepts] });
+  }
+  return declared;
+}
+
+function conceptList(concepts) {
+  if (concepts === false) return [];
+  return concepts;
+}
+
+function ownershipOf(declared) {
+  const ownersByClaim = new Map();
+  for (const [name, project] of declared) {
+    for (const domain of domainNamesOf(project.tags)) {
+      for (const concept of project.concepts) {
+        registerClaim(ownersByClaim, domain, concept, name);
+      }
+    }
+  }
+  return ownersByClaim;
+}
+
+function evaluatePreflight(changes, declarations) {
+  const declared = declaredProjects(declarations);
+  const context = { declared, ownersByClaim: ownershipOf(declared) };
+  return changes.map((change) => evaluateChange(change, context));
+}
+
+function evaluateChange(change, context) {
+  const existing = context.declared.get(change.project);
+  const tags = change.tags ?? existing?.tags ?? [];
+  const concepts = mergedConcepts(change, existing);
+  const [blockedBy] = changeReasons(change, tags, concepts, context);
+  const verdict = { change, status: "legal" };
+  if (blockedBy === undefined) {
+    applyChange(change, tags, concepts, context);
+  } else {
+    verdict.status = "blocked";
+    verdict.reason = blockedBy;
+  }
+  return verdict;
+}
+
+function mergedConcepts(change, existing) {
+  const added = change.concepts ?? [];
+  if (existing === undefined) return [...new Set(added)];
+  return [...new Set([...existing.concepts, ...added])];
+}
+
+function changeReasons(change, tags, concepts, context) {
+  return [
+    ...actionReasons(change, tags, context),
+    ...declarationReasons(change, tags, concepts),
+    ...ownershipReasons(change, tags, concepts, context.ownersByClaim),
+  ];
+}
+
+function actionReasons(change, tags, context) {
+  if (change.action === "add-concept") return [];
+  if (context.declared.has(change.project)) {
+    return [
+      blockReason(
+        "project-exists",
+        `extend ${change.project} with add-concept instead of adding it again`,
+      ),
+    ];
+  }
+  const required = preflightTypeTags[change.action];
+  if (!tags.includes(required)) {
+    return [blockReason("action-type-tag", `${change.action} requires ${required} in tags`)];
+  }
+  return [];
+}
+
+function declarationReasons(change, tags, concepts) {
+  if (concepts.length === 0) return [];
+  if (!tags.includes("type:domain")) {
+    return [
+      blockReason(
+        "domain-only-concepts",
+        `only type:domain projects declare concepts; tag ${change.project} as type:domain or remove its concepts`,
+      ),
+    ];
+  }
+  if (domainNamesOf(tags).length === 0) {
+    return [
+      blockReason(
+        "concepts-need-domain-tag",
+        `add a ${domainTagPrefix}<name> tag to ${change.project} or remove its concepts`,
+      ),
+    ];
+  }
+  return [];
+}
+
+function ownershipReasons(change, tags, concepts, ownersByClaim) {
+  for (const domain of domainNamesOf(tags)) {
+    for (const concept of concepts) {
+      const [owner] = ownersByClaim.get(domain)?.get(concept) ?? [];
+      if (owner !== undefined && owner !== change.project) {
+        return [
+          blockReason(
+            "one-owner-per-concept",
+            `transfer ${domain}:${concept} ownership in a human-reviewed change, or declare a distinct concept name`,
+            owner,
+          ),
+        ];
+      }
+    }
+  }
+  return [];
+}
+
+function blockReason(rule, minimalChange, conflictsWith) {
+  const entry = { rule, minimalChange };
+  if (conflictsWith !== undefined) entry.conflictsWith = conflictsWith;
+  return entry;
+}
+
+function applyChange(change, tags, concepts, context) {
+  context.declared.set(change.project, { tags: [...tags], concepts });
+  context.ownersByClaim = ownershipOf(context.declared);
+}
+
+function conceptSuffix(change) {
+  if (change.concepts === undefined || change.concepts.length === 0) return "";
+  return ` ${change.concepts.join(", ")}`;
+}
+
+function formatVerdict(verdict) {
+  const head = `${verdict.status.toUpperCase()} ${verdict.change.project} ${verdict.change.action}${conceptSuffix(verdict.change)}`;
+  if (verdict.reason === undefined) return head;
+  return `${head} | ${formatReason(verdict.reason)}`;
+}
+
+function formatReason(entry) {
+  let text = `rule: ${entry.rule}`;
+  if ("conflictsWith" in entry) text += ` | conflicts with ${entry.conflictsWith}`;
+  return `${text} | minimal legal change: ${entry.minimalChange}`;
+}
+
+function boundariesMode() {
+  const graph = loadGraph();
+  const violations = [
+    ...graphViolations(graph),
+    ...typeTagViolations(graph),
+    ...bindingTagViolations(graph),
+    ...ffiViolations(graph),
+    ...thirdPartyDependencyViolations(graph),
+    ...registryViolations(conceptDeclarations(graph)),
+  ];
+  reportViolations(violations, Object.keys(graph.nodes).length);
+}
+
+function reportViolations(violations, projectCount) {
+  for (const violation of violations) console.error(violation);
+  if (violations.length === 0) {
+    console.log(`boundaries ok across ${projectCount} projects`);
+  } else {
+    process.exitCode = failureExitCode;
+  }
+}
+
+function preflightMode(planPath) {
+  const changes = parsePlan(planPath);
+  const graph = loadGraph();
+  const verdicts = evaluatePreflight(changes, conceptDeclarations(graph));
+  for (const verdict of verdicts) console.log(formatVerdict(verdict));
+  if (verdicts.some((verdict) => verdict.status === "blocked")) {
+    process.exitCode = failureExitCode;
+  }
+}
+
+function main(args) {
+  if (args[0] === "--preflight") {
+    if (args.length !== 2) throw new Error("usage: check-boundaries.mjs [--preflight <plan.json>]");
+    preflightMode(args[1]);
+    return;
+  }
+  if (args.length > 0) throw new Error(`unknown arguments: ${args.join(" ")}`);
+  boundariesMode();
+}
+
+function isEntryScript() {
+  const [, entry] = process.argv;
+  if (entry === undefined) return false;
+  const entryPath = realpathSync(entry);
+  return entryPath === realpathSync(import.meta.filename);
+}
+
+if (isEntryScript()) {
+  main(process.argv.slice(2));
+}
+
+export { evaluatePreflight, formatVerdict, parsePlan, readConceptDeclaration, registryViolations };

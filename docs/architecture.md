@@ -37,6 +37,16 @@ Every project declares tags. TypeScript projects declare them in the `nx` field 
 
 `tools/check-boundaries.mjs` enforces these rules for every project by reading the Nx graph and project tags. It uses a per-run temporary graph directory and removes it in `finally`, so concurrent checks do not share `.nx/boundaries-graph.json`. It also checks binding ecosystem/language compatibility, scans every Cargo dependency table for FFI crates, and checks TypeScript domain runtime manifests. TypeScript domain `dependencies`, `optionalDependencies`, and `peerDependencies` must use any `workspace:` protocol; `devDependencies` and bundled-dependency metadata are out of scope.
 
+### Concept registry
+
+A `type:domain` project declares the business concepts it owns in the `nx` field of its `package.json` as `"concepts": ["name", ...]`. `tools/check-boundaries.mjs` reads these manifests directly and enforces three rules:
+
+- Only `type:domain` projects may declare concepts.
+- A concept-declaring project must carry a `domain:<name>` tag.
+- One owner per `(domain, concept)`: two projects may not declare the same pair. The same concept name under different domains is a different concept.
+
+`node tools/check-boundaries.mjs --preflight <plan.json>` evaluates a proposed change before any code is written. The plan lists `add-domain`, `add-app`, and `add-concept` entries, each with `project`, `tags`, and `concepts`; every entry is checked against the current registry and the entries before it. The mode writes nothing, prints one `LEGAL` or `BLOCKED` verdict per entry, and exits 0 only when every entry is legal.
+
 ## Tool rules
 
 These principles govern every configurable tool in this repo. Apply them to any tool added later.
