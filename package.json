@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "lint": "oxlint apps libs tools && node tools/check-boundaries.mjs",
+    "architecture:acceptance": "node tools/architecture-acceptance.mjs",
     "format": "oxfmt",
     "format:check": "oxfmt --check"
   },
