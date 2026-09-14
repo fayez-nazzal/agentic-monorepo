@@ -55,9 +55,13 @@ A `type:domain` project declares the business concepts it owns in the `nx` field
 
 The checker blocks missing or ambiguous projects, tags, claims, and duplicate targets with a named rule and minimal legal change. Malformed transfer fields fail plan parsing. A legal transfer updates only the simulated pre-flight registry by removing the claim from `owner` and adding it to `project`; blocked entries do not update simulated state. The checker never edits manifests: after a legal verdict, a human-reviewed manifest change is still required. The CLI and TUI use the same parser, evaluator, and verdict renderer.
 
+### Dependency-edge pre-flight
+
+`add-dependency` models one proposed project dependency before a manifest changes. Its plan entry is `{ "action": "add-dependency", "source": "<project>", "target": "<project>" }`. Both projects must exist in the current or earlier simulated state, be distinct, and satisfy the same type, domain, ecosystem, and language dependency rules that the graph checker enforces. A blocked edge names `dependency-edge-not-allowed` and the target project, and requires changing the source or target tags so the edge is permitted. Legal entries do not write manifests or dependency declarations; they only advance ordered pre-flight evaluation. The CLI and TUI render the same verdict, and the TUI prompts for source and target before explicit save.
+
 ## Architecture pre-flight procedure
 
-Agents must run pre-flight before writing a new domain or app manifest, adding concepts, or changing concept ownership. Create an ordered `plan.json` containing `add-domain`, `add-app`, `add-concept`, or `transfer-concept` entries, then run:
+Agents must run pre-flight before writing a new domain or app manifest, adding concepts, changing concept ownership, or adding a dependency edge. Create an ordered `plan.json` containing `add-domain`, `add-app`, `add-concept`, `transfer-concept`, or `add-dependency` entries, then run:
 
 ```sh
 node tools/check-boundaries.mjs --preflight plan.json

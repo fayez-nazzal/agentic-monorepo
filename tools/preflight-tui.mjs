@@ -31,6 +31,7 @@ const actions = supportedPlanActions();
 const usage = "[a]dd [e]dit N [d]elete N [m]ove N up|down [v]alidate [s]ave [q]uit";
 const fields = "[a]ction [p]roject [t]ags [c]oncepts — empty finishes";
 const transferFields = "[a]ction [p]roject [o]wner [d]omain [n]concept — empty finishes";
+const dependencyFields = "[a]ction [s]ource [t]arget — empty finishes";
 
 class InputClosedError extends Error {
   constructor() {
@@ -114,10 +115,17 @@ function transferFieldsOf(change) {
   }
   return clean;
 }
-function normalizeChange(change) {
-  if (change.action === "transfer-concept") {
-    return { action: change.action, project: change.project, ...transferFieldsOf(change) };
+function dependencyFieldsOf(change) {
+  const clean = {};
+  if (change.source !== undefined) {
+    clean.source = change.source;
   }
+  if (change.target !== undefined) {
+    clean.target = change.target;
+  }
+  return clean;
+}
+function normalizeExistingChange(change) {
   const clean = { action: change.action, project: change.project };
   if (change.tags !== undefined) {
     clean.tags = change.tags;
@@ -127,19 +135,28 @@ function normalizeChange(change) {
   }
   return clean;
 }
-
-function changeFromPrompt(action, project, tags, concepts) {
-  const change = { action, project };
-  if (tags !== false) {
-    change.tags = tags;
+function normalizeChange(change) {
+  if (change.action === "transfer-concept") {
+    return { action: change.action, project: change.project, ...transferFieldsOf(change) };
   }
-  change.concepts = concepts;
-  return normalizeChange(change);
+  if (change.action === "add-dependency") {
+    return { action: change.action, ...dependencyFieldsOf(change) };
+  }
+  return normalizeExistingChange(change);
 }
-
 async function promptTransferValue(rl, label) {
   const answer = await ask(rl, label);
   return answer.trim();
+}
+
+async function promptDependencyChange(rl) {
+  const source = await promptTransferValue(rl, "source project name: ");
+  const target = await promptTransferValue(rl, "target project name: ");
+  if (source === "" || target === "") {
+    console.log("  empty dependency field — change skipped");
+    return false;
+  }
+  return normalizeChange({ action: "add-dependency", source, target });
 }
 
 async function promptTransferChange(rl) {
@@ -154,11 +171,7 @@ async function promptTransferChange(rl) {
   }
   return normalizeChange({ action: "transfer-concept", project, owner, domain, concept });
 }
-
-async function promptChange(rl, action) {
-  if (action === "transfer-concept") {
-    return promptTransferChange(rl);
-  }
+async function promptProjectChange(rl, action) {
   const answer = await ask(rl, "project name: ");
   const project = answer.trim();
   if (project === "") {
@@ -168,6 +181,16 @@ async function promptChange(rl, action) {
   const tags = await promptList(rl, "tags", defaultTags(action), action === "add-concept");
   const concepts = await promptList(rl, "concepts", []);
   return changeFromPrompt(action, project, tags, concepts);
+}
+
+function promptChange(rl, action) {
+  if (action === "transfer-concept") {
+    return promptTransferChange(rl);
+  }
+  if (action === "add-dependency") {
+    return promptDependencyChange(rl);
+  }
+  return promptProjectChange(rl, action);
 }
 async function addChange(rl, session) {
   const action = await promptAction(rl);
@@ -185,6 +208,9 @@ async function addChange(rl, session) {
 function changeLabel(change) {
   if (change.action === "transfer-concept") {
     return `${change.action} ${change.project} | owner: ${change.owner} | claim: ${change.domain}:${change.concept}`;
+  }
+  if (change.action === "add-dependency") {
+    return `${change.action} ${change.source} -> ${change.target}`;
   }
   const tags = listHint(change.tags ?? []);
   const concepts = listHint(change.concepts ?? []);
@@ -258,6 +284,9 @@ function fieldsFor(change) {
   if (change.action === "transfer-concept") {
     return transferFields;
   }
+  if (change.action === "add-dependency") {
+    return dependencyFields;
+  }
   return fields;
 }
 
@@ -272,6 +301,10 @@ async function editChange(rl, session, index) {
 }
 
 async function editField(rl, change, field) {
+  if (change.action === "add-dependency" && field === "t") {
+    await editTarget(rl, change);
+    return;
+  }
   const handler = editHandlers.get(field);
   if (handler === undefined) {
     console.log(`  unknown field ${field}`);
@@ -321,6 +354,14 @@ async function editConcepts(rl, change) {
   change.concepts = await promptList(rl, "concepts", change.concepts ?? []);
 }
 
+async function editSource(rl, change) {
+  await editTransferValue(rl, change, "source", "source project");
+}
+
+async function editTarget(rl, change) {
+  await editTransferValue(rl, change, "target", "target project");
+}
+
 const editHandlers = new Map([
   ["a", editAction],
   ["p", editProject],
@@ -329,8 +370,8 @@ const editHandlers = new Map([
   ["o", editOwner],
   ["d", editDomain],
   ["n", editTransferConcept],
+  ["s", editSource],
 ]);
-
 async function editAt(rl, session, token) {
   const index = changeIndex(session, token);
   if (index !== -1) {
@@ -374,10 +415,21 @@ function validate(session) {
   }
 }
 
+function validatedPlanText(changes) {
+  const tempPath = writeTempPlan(changes);
+  try {
+    parsePlan(tempPath);
+    return planFileText(changes);
+  } finally {
+    rmSync(dirname(tempPath), { recursive: true, force: true });
+  }
+}
+
 function savePlan(session) {
   try {
+    const text = validatedPlanText(session.changes);
     mkdirSync(dirname(session.planPath), { recursive: true });
-    writeFileSync(session.planPath, planFileText(session.changes));
+    writeFileSync(session.planPath, text);
   } catch (error) {
     console.log(`  save failed: ${error.message}`);
     return false;
@@ -523,6 +575,21 @@ const smokePlan = {
       concept: "message",
     },
     {
+      action: "add-dependency",
+      source: "@domains/tui-smoke-source",
+      target: "@domains/tui-smoke-target",
+    },
+    {
+      action: "add-dependency",
+      source: "@domains/tui-smoke-target",
+      target: "tui-smoke-console",
+    },
+    {
+      action: "add-dependency",
+      source: "tui-smoke-console",
+      target: "@domains/tui-smoke-target",
+    },
+    {
       action: "transfer-concept",
       project: "@domains/tui-smoke-archive",
       owner: "@domains/tui-smoke-source",
@@ -543,11 +610,6 @@ const smokePlan = {
       concepts: ["digest"],
     },
     {
-      action: "add-app",
-      project: "tui-smoke-console",
-      tags: ["type:app", "platform:web", "lang:ts"],
-    },
-    {
       action: "add-domain",
       project: "@domains/tui-smoke-message",
       tags: ["type:domain", "domain:inbox", "lang:ts"],
@@ -555,7 +617,17 @@ const smokePlan = {
     },
     { action: "add-concept", project: "@domains/tui-smoke-missing", concepts: ["digest"] },
   ],
-  expectedStatuses: ["legal", "blocked", "legal", "legal", "legal", "blocked", "blocked"],
+  expectedStatuses: [
+    "legal",
+    "legal",
+    "blocked",
+    "legal",
+    "blocked",
+    "legal",
+    "legal",
+    "blocked",
+    "blocked",
+  ],
 };
 const smokeDeclarations = [
   {
@@ -571,6 +643,11 @@ const smokeDeclarations = [
   {
     name: "@domains/tui-smoke-archive",
     tags: ["type:domain", "domain:inbox", "lang:ts"],
+    concepts: [],
+  },
+  {
+    name: "tui-smoke-console",
+    tags: ["type:app", "platform:web", "lang:ts"],
     concepts: [],
   },
 ];
