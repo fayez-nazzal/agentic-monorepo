@@ -1,8 +1,8 @@
 // Interactive pre-flight planner for the concept registry.
 //
 // This file is a client of tools/check-boundaries.mjs, which stays the sole
-// Boundary and concept-registry enforcer: every verdict comes from
-// RunPreflight/formatVerdict and every plan error comes from parsePlan.
+// Boundary and concept-registry enforcer: checker evaluation supplies verdicts;
+// The formatVerdict renderer and parsePlan parser own rendering and plan errors.
 //
 // Terminal interaction uses Node's built-in readline because a menu-driven
 // Prompt loop is sufficient for planning; no TUI framework dependency is
