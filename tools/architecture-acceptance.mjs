@@ -109,7 +109,13 @@ async function snapshotFile(filePath) {
 
 async function scenarioReadOnlyTui(root) {
   const planPath = join(root, "plan-readonly.json");
-  const manifestPath = join(import.meta.dirname, "..", "libs", "domains", "search", "package.json");
+  let manifestPath = join(import.meta.dirname, "..", "libs", "domains", "search", "package.json");
+  try {
+    await stat(manifestPath);
+  } catch (error) {
+    if (error?.code !== "ENOENT") throw error;
+    manifestPath = join(import.meta.dirname, "..", "package.json");
+  }
   const changes = [
     {
       action: "add-domain",

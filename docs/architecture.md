@@ -49,6 +49,20 @@ A `type:domain` project declares the business concepts it owns in the `nx` field
 
 `pnpm preflight:tui` opens an interactive planner over the same rules. It loads an existing plan or starts a fresh `plan.json`, edits the ordered change list, validates to get the identical `LEGAL`/`BLOCKED` verdicts, and writes only the plan file, only on the explicit `save` command. Project manifests are never touched. Every rule decision is delegated to `tools/check-boundaries.mjs`; the planner owns no rules of its own. `node tools/preflight-tui.mjs --smoke` runs its non-interactive self-check, which CI runs after `architecture:acceptance`.
 
+## Architecture pre-flight procedure
+
+Agents must run pre-flight before writing a new domain or app manifest, adding concepts, or changing concept ownership. Create an ordered `plan.json` containing `add-domain`, `add-app`, and `add-concept` entries, then run:
+
+```sh
+node tools/check-boundaries.mjs --preflight plan.json
+```
+
+The CLI prints one `LEGAL` or `BLOCKED` verdict per entry and exits `0` only when every entry is legal. A `BLOCKED` result is a stop: do not write the proposed files. `add-concept` targets an existing project; an unknown target is not treated as a new project. Use `pnpm preflight:tui` when editing a plan interactively; validation is read-only, and the TUI writes only the plan after an explicit `save`.
+
+For a blocked ownership claim, keep the existing owner and either choose a distinct concept or obtain a human-reviewed ownership transfer. A transfer is a deliberate manifest change, not an automatic pre-flight action. Same-name concepts in different `domain:<name>` projects are separate legal claims because ownership is keyed by `(domain, concept)`.
+
+The creator's review and `--dry-run` validate destination and selected template files, not inferred concept ownership. Generated workspaces include the checker, acceptance script, and TUI; their CI runs `pnpm architecture:acceptance` and the deterministic TUI smoke check. Agents still run the explicit pre-flight above at the architecture planning boundary.
+
 ## Tool rules
 
 These principles govern every configurable tool in this repo. Apply them to any tool added later.

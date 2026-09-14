@@ -13,6 +13,11 @@
         "{workspaceRoot}/package.json",
         "{workspaceRoot}/pnpm-lock.yaml",
         "{workspaceRoot}/README.md",
+        "{workspaceRoot}/docs/architecture.md",
+        "{workspaceRoot}/tools/check-boundaries.mjs",
+        "{workspaceRoot}/tools/architecture-acceptance.mjs",
+        "{workspaceRoot}/tools/preflight-tui.mjs",
+        "{workspaceRoot}/.github/workflows/ci.yml",
         "{projectRoot}/scripts/package.mjs"
       ],
       "outputs": ["{projectRoot}/dist"]

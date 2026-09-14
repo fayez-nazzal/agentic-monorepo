@@ -196,7 +196,14 @@ function renderReadme(options: ResolvedOptions, template: TemplateSnapshot): str
     options.apps.length === 0
       ? ""
       : `## Develop\n\n\`\`\`sh\n${options.apps.map((app) => developCommands[app]).join("\n")}\n\`\`\`\n\nIf you change a library, rebuild it before the running development server picks it up.\n\n`;
-  return `# ${options.name}\n\nThis repository contains ${selected}, generated from Agentic Monorepo (template ${template.creatorVersion}). Examples are intentionally small and should be replaced with your product's real domains.\n\n## Included projects\n\n${appLines}\n${options.rust ? "- libs/rust/search-index (independent Rust library)\n" : ""}\n${developSection}## Checks\n\n\`\`\`sh\n${buildLines}\npnpm nx run-many -t typecheck build test lint\npnpm format:check\n\`\`\`\n\nReplay this selection with npx create-agentic-monorepo ${options.name} --config ./agentic.config.json. The generated examples use the shared search domain where applicable; Rust is independent and is not wired into an application.\n`;
+  const checkCommands = [
+    buildLines,
+    "pnpm nx run-many -t typecheck build test lint",
+    "pnpm architecture:acceptance",
+    "node tools/preflight-tui.mjs --smoke",
+    "pnpm format:check",
+  ].join("\n");
+  return `# ${options.name}\n\nThis repository contains ${selected}, generated from Agentic Monorepo (template ${template.creatorVersion}). Examples are intentionally small and should be replaced with your product's real domains.\n\n## Included projects\n\n${appLines}\n${options.rust ? "- libs/rust/search-index (independent Rust library)\n" : ""}\n${developSection}## Checks\n\n\`\`\`sh\n${checkCommands}\n\`\`\`\n\n## Architecture pre-flight\n\nBefore adding a domain, app, or concept, run \`node tools/check-boundaries.mjs --preflight plan.json\` or use \`pnpm preflight:tui\`. A blocked verdict means do not write the change; choose the legal change described by the diagnostic. Ownership transfers require a human-reviewed manifest change. The same concept name is legal in different domains because the registry keys \`(domain, concept)\`.\n\nReplay this selection with npx create-agentic-monorepo ${options.name} --config ./agentic.config.json. The generated examples use the shared search domain where applicable; Rust is independent and is not wired into an application.\n`;
 }
 
 function renderWorkflow(options: ResolvedOptions): string {
@@ -218,6 +225,8 @@ function renderWorkflow(options: ResolvedOptions): string {
     });
   steps.push(
     { id: "install-dependencies", run: "pnpm install --frozen-lockfile" },
+    { id: "architecture-acceptance", run: "pnpm architecture:acceptance" },
+    { id: "preflight-tui-smoke", run: "node tools/preflight-tui.mjs --smoke" },
     { id: "verify-workspace", run: "pnpm nx run-many -t typecheck build test lint" },
     { id: "check-format", run: "pnpm format:check" },
   );

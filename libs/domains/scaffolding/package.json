@@ -20,6 +20,11 @@
       "type:domain",
       "domain:scaffolding",
       "lang:ts"
+    ],
+    "concepts": [
+      "catalog",
+      "preset",
+      "creator-config"
     ]
   }
 }
