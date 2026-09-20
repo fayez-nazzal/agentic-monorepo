@@ -14,7 +14,7 @@
     "cross-spawn": "7.0.6",
     "nx": "23.2.1",
     "oxfmt": "0.67.0",
-    "oxlint": "1.81.0",
+    "oxlint": "1.83.0",
     "oxlint-tsgolint": "7.0.2001",
     "tsdown": "0.22.14",
     "typescript": "7.0.2",
