@@ -18,7 +18,7 @@
   "dependencies": {
     "@domains/scaffolding": "workspace:*",
     "cross-spawn": "7.0.6",
-    "yaml": "2.9.0"
+    "yaml": "2.9.1"
   },
   "devDependencies": {
     "@types/cross-spawn": "6.0.6"
