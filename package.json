@@ -10,7 +10,7 @@
     "format:check": "oxfmt --check"
   },
   "devDependencies": {
-    "@types/node": "26.5.1",
+    "@types/node": "26.6.5",
     "cross-spawn": "7.0.6",
     "nx": "23.2.1",
     "oxfmt": "0.68.0",
