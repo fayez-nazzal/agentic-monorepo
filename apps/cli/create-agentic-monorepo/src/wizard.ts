@@ -3,6 +3,7 @@ import { basename, resolve } from "node:path";
 import { createInterface } from "node:readline/promises";
 
 import {
+  CANCEL_SYMBOL,
   box,
   cancel,
   confirm,
@@ -66,7 +67,7 @@ function checkSignal(signal: AbortSignal): void {
   if (signal.aborted) cancelled();
 }
 
-function checked<T>(value: T | symbol): T {
+function checked<T>(value: T | typeof CANCEL_SYMBOL): T {
   if (isCancel(value)) cancelled();
   return value as T;
 }
