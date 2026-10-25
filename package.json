@@ -15,7 +15,7 @@
     "nx": "23.2.1",
     "oxfmt": "0.73.0",
     "oxlint": "1.81.0",
-    "oxlint-tsgolint": "7.0.2001",
+    "oxlint-tsgolint": "7.0.2004",
     "tsdown": "0.23.1",
     "typescript": "7.0.2",
     "unrun": "0.3.1",
